@@ -12,7 +12,7 @@ const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const { cartItems = [], clearCart } = useContext(CartContext);
+  const { cartItems = []} = useContext(CartContext);
   const { user, logout, notifications, setNotifications } = useContext(UserContext);
   const navigate = useNavigate();
 
@@ -183,3 +183,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+
