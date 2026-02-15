@@ -14,40 +14,42 @@ const VendorDashboard = () => {
   const [addingMenuItem, setAddingMenuItem] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
 
-  // Fetch vendor's restaurant
-  useEffect(() => {
-    if (!user) return;
+  // 🔥 Fetch vendor's restaurant
+  const fetchRestaurant = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const vendorId = user.id || user._id;
 
-    const fetchRestaurant = async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const vendorId = user.id || user._id;
-        const res = await api.get(`/vendor/dashboard?vendorId=${vendorId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      const res = await api.get(`/vendor/dashboard?vendorId=${vendorId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-        if (res.data.restaurants?.length > 0) {
-          const rest = res.data.restaurants[0];
-          setRestaurant({ ...rest, menuItems: rest.menuItems || [] });
-        } else {
-          setRestaurant(null);
-        }
-      } catch (err) {
-        console.error("Error fetching restaurant:", err);
+      if (res.data.restaurants?.length > 0) {
+        const rest = res.data.restaurants[0];
+        setRestaurant({ ...rest, menuItems: rest.menuItems || [] });
+      } else {
         setRestaurant(null);
-      } finally {
-        setFetching(false);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching restaurant:", err);
+      setRestaurant(null);
+    } finally {
+      setFetching(false);
+    }
+  };
 
-    fetchRestaurant();
+  useEffect(() => {
+    if (user) {
+      fetchRestaurant();
+    }
   }, [user]);
 
-  // Add restaurant
+  // ✅ Add restaurant
   const handleAddRestaurant = async (data) => {
     try {
       const token = localStorage.getItem("token");
       const vendorId = user.id || user._id;
+
       const res = await api.post(
         "/vendor/restaurant",
         { ...data, ownerId: vendorId },
@@ -55,8 +57,9 @@ const VendorDashboard = () => {
       );
 
       if (res.data.restaurant) {
-        setRestaurant({ ...res.data.restaurant, menuItems: [] });
-        alert("Restaurant added successfully! Now you can add menu items.");
+        // Refetch instead of manually setting
+        await fetchRestaurant();
+        alert("Restaurant added successfully!");
       }
     } catch (err) {
       console.error("Error adding restaurant:", err);
@@ -64,7 +67,7 @@ const VendorDashboard = () => {
     }
   };
 
-  // Add/Edit Menu Item
+  // ✅ Add/Edit Menu Item (NO manual push now)
   const handleMenuItemSubmit = async (itemData) => {
     try {
       const token = localStorage.getItem("token");
@@ -77,28 +80,16 @@ const VendorDashboard = () => {
         ? { ...itemData }
         : { ...itemData, restaurantId: restaurant.id };
 
-      const res = await api[method.toLowerCase()](url, body, {
+      await api[method.toLowerCase()](url, body, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      const newItem = res.data.menuItem || res.data.updated || itemData;
+      // 🔥 Refetch updated restaurant data
+      await fetchRestaurant();
 
-      if (editingMenuItem) {
-        setRestaurant((prev) => ({
-          ...prev,
-          menuItems: prev.menuItems.map((i) =>
-            i.id === editingMenuItem.id ? newItem : i
-          ),
-        }));
-        setEditingMenuItem(null);
-      } else {
-        setRestaurant((prev) => ({
-          ...prev,
-          menuItems: [...prev.menuItems, newItem],
-        }));
-      }
-
+      setEditingMenuItem(null);
       setAddingMenuItem(false);
+
       alert("Menu item saved successfully!");
     } catch (err) {
       console.error("Error saving menu item:", err);
@@ -106,26 +97,26 @@ const VendorDashboard = () => {
     }
   };
 
-  // Edit menu item
+  // Edit
   const handleEdit = (menuItem) => {
     setEditingMenuItem(menuItem);
     setAddingMenuItem(true);
   };
 
-  // Delete menu item
+  // Delete
   const handleDelete = async (menuItemId) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
 
     try {
       const token = localStorage.getItem("token");
+
       await api.delete(`/vendor/menu/${menuItemId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setRestaurant((prev) => ({
-        ...prev,
-        menuItems: prev.menuItems.filter((i) => i.id !== menuItemId),
-      }));
+      // 🔥 Refetch instead of manual filter
+      await fetchRestaurant();
+
       alert("Menu item deleted!");
     } catch (err) {
       console.error("Error deleting menu item:", err);
@@ -142,16 +133,19 @@ const VendorDashboard = () => {
     <div className="vendor-dashboard">
       <h1>Owner Dashboard</h1>
 
-      {!restaurant && <AddRestaurantForm onRestaurantAdded={handleAddRestaurant} />}
+      {!restaurant && (
+        <AddRestaurantForm onRestaurantAdded={handleAddRestaurant} />
+      )}
 
       {restaurant && (
         <div className="restaurant-info">
-          {restaurant.image && <img src={restaurant.image} alt={restaurant.name} />}
+          {restaurant.image && (
+            <img src={restaurant.image} alt={restaurant.name} />
+          )}
           <h2>{restaurant.name}</h2>
           <p className="category">{restaurant.category}</p>
           <p>Checkout Time: {restaurant.checkoutTime || "N/A"} mins</p>
 
-          {/* Add/Edit Menu Item Button */}
           {!addingMenuItem && !editingMenuItem && (
             <button
               className="add-more-btn"
@@ -161,7 +155,6 @@ const VendorDashboard = () => {
             </button>
           )}
 
-          {/* Add/Edit Menu Item Form */}
           {addingMenuItem && (
             <AddMenuItemForm
               restaurantId={restaurant.id}
@@ -174,12 +167,11 @@ const VendorDashboard = () => {
             />
           )}
 
-          {/* Menu Items */}
           <div className="menu-items-grid">
             {restaurant.menuItems?.length > 0 ? (
               restaurant.menuItems.map((item) => (
                 <MenuItemCard
-                  key={item.id}
+                  key={item.id || item._id}
                   menuItem={item}
                   isUserView={false}
                   onEdit={handleEdit}
