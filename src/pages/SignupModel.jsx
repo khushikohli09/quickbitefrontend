@@ -17,7 +17,7 @@ const SignupModal = () => {
     setSuccess("");
 
     try {
-      const res = await fetch("https://quickbite-backend-47wd.onrender.com/api/auth/signup", {
+      const res = await fetch("https://quickbite-backend-47wd.onrender.com/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role }),
@@ -85,4 +85,5 @@ const SignupModal = () => {
 };
 
 export default SignupModal;
+
 
