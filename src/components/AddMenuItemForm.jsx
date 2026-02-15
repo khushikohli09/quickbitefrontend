@@ -35,7 +35,7 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
     const method = editItem ? "PUT" : "POST";
     const url = editItem
       ? `https://quickbite-backend-47wd.onrender.com/api/vendor/menu/${editItem.id}`
-      : `https://quickbite-backend-47wd.onrender.com/api/vendor/menu";
+      : "https://quickbite-backend-47wd.onrender.com/api/vendor/menu";
 
     try {
       const res = await fetch(url, {
@@ -123,4 +123,5 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
 };
 
 export default AddMenuItemForm;
+
 
