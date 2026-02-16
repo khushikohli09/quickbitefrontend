@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { UserContext } from "../context/UserContext";
 import AddRestaurantForm from "../components/AddRestaurantForm";
 import AddMenuItemForm from "../components/AddMenuItemForm";
 import MenuItemCard from "../components/MenuItemCard";
 import api from "../api/api";
-import { socket, registerSocketUser } from "../Socket"; // ✅ Fixed import
+import { socket, registerSocketUser } from "../Socket"; // ✅ make sure file name matches exactly
 import "../styles/Vendor.css";
 import "../styles/MenuItemCard.css";
 
@@ -14,33 +14,12 @@ const VendorDashboard = () => {
   const [fetching, setFetching] = useState(true);
   const [addingMenuItem, setAddingMenuItem] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
-  const [notifications, setNotifications] = useState([]); // 🔔 Notifications state
+  // 🔥 Memoized fetchRestaurant to satisfy ESLint
+  const fetchRestaurant = useCallback(async () => {
+    if (!user) return;
 
-  // 🔔 SOCKET NOTIFICATION LISTENER
-  useEffect(() => {
-    if (user) {
-      registerSocketUser(user.id || user._id, user.role);
-
-      socket.on("order-received", (data) => {
-        setNotifications((prev) => [...prev, data]);
-
-        // ⏳ Auto remove after 3 minutes (180000 ms)
-        setTimeout(() => {
-          setNotifications((prev) =>
-            prev.filter((n) => n.orderId !== data.orderId)
-          );
-        }, 180000);
-      });
-    }
-
-    return () => {
-      socket.off("order-received");
-    };
-  }, [user]);
-
-  // 🔥 Fetch vendor's restaurant
-  const fetchRestaurant = async () => {
     try {
       const token = localStorage.getItem("token");
       const vendorId = user.id || user._id;
@@ -61,13 +40,34 @@ const VendorDashboard = () => {
     } finally {
       setFetching(false);
     }
-  };
+  }, [user]);
 
+  // 🔔 SOCKET NOTIFICATIONS
   useEffect(() => {
     if (user) {
-      fetchRestaurant();
+      registerSocketUser(user.id || user._id, user.role);
+
+      socket.on("order-received", (data) => {
+        setNotifications((prev) => [...prev, data]);
+
+        // ⏳ Auto remove after 3 minutes
+        setTimeout(() => {
+          setNotifications((prev) =>
+            prev.filter((n) => n.orderId !== data.orderId)
+          );
+        }, 180000);
+      });
     }
+
+    return () => {
+      socket.off("order-received");
+    };
   }, [user]);
+
+  // 🔥 Fetch restaurant whenever user or fetchRestaurant changes
+  useEffect(() => {
+    fetchRestaurant();
+  }, [user, fetchRestaurant]);
 
   // ✅ Add restaurant
   const handleAddRestaurant = async (data) => {
@@ -150,7 +150,7 @@ const VendorDashboard = () => {
     <div className="vendor-dashboard">
       <h1>Owner Dashboard</h1>
 
-      {/* 🔔 Notification Section */}
+      {/* 🔔 Notifications */}
       <div className="notification-container">
         {notifications.map((n) => (
           <div key={n.orderId} className="notification">
@@ -166,18 +166,13 @@ const VendorDashboard = () => {
 
       {restaurant && (
         <div className="restaurant-info">
-          {restaurant.image && (
-            <img src={restaurant.image} alt={restaurant.name} />
-          )}
+          {restaurant.image && <img src={restaurant.image} alt={restaurant.name} />}
           <h2>{restaurant.name}</h2>
           <p className="category">{restaurant.category}</p>
           <p>Checkout Time: {restaurant.checkoutTime || "N/A"} mins</p>
 
           {!addingMenuItem && !editingMenuItem && (
-            <button
-              className="add-more-btn"
-              onClick={() => setAddingMenuItem(true)}
-            >
+            <button className="add-more-btn" onClick={() => setAddingMenuItem(true)}>
               Add Menu Item
             </button>
           )}
