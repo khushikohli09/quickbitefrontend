@@ -4,6 +4,7 @@ import AddRestaurantForm from "../components/AddRestaurantForm";
 import AddMenuItemForm from "../components/AddMenuItemForm";
 import MenuItemCard from "../components/MenuItemCard";
 import api from "../api/api";
+import { socket, registerSocketUser } from "../socket";
 import "../styles/Vendor.css";
 import "../styles/MenuItemCard.css";
 
@@ -13,6 +14,36 @@ const VendorDashboard = () => {
   const [fetching, setFetching] = useState(true);
   const [addingMenuItem, setAddingMenuItem] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState(null);
+
+  const [notifications, setNotifications] = useState([]);
+
+  // 🔔 SOCKET NOTIFICATIONS
+  useEffect(() => {
+    if (!user) return;
+
+    registerSocketUser(user.id || user._id, user.role);
+
+    const handleOrderReceived = (data) => {
+      setNotifications((prev) => {
+        // Prevent duplicates
+        if (prev.find((n) => n.orderId === data.orderId)) return prev;
+        return [...prev, data];
+      });
+
+      // Auto-remove after 3 minutes
+      setTimeout(() => {
+        setNotifications((prev) =>
+          prev.filter((n) => n.orderId !== data.orderId)
+        );
+      }, 180000); // 3 minutes
+    };
+
+    socket.on("order-received", handleOrderReceived);
+
+    return () => {
+      socket.off("order-received", handleOrderReceived);
+    };
+  }, [user]);
 
   // 🔥 Fetch vendor's restaurant
   const fetchRestaurant = async () => {
@@ -39,12 +70,10 @@ const VendorDashboard = () => {
   };
 
   useEffect(() => {
-    if (user) {
-      fetchRestaurant();
-    }
+    if (user) fetchRestaurant();
   }, [user]);
 
-  // ✅ Add restaurant
+  // ✅ Add Restaurant
   const handleAddRestaurant = async (data) => {
     try {
       const token = localStorage.getItem("token");
@@ -57,7 +86,6 @@ const VendorDashboard = () => {
       );
 
       if (res.data.restaurant) {
-        // Refetch instead of manually setting
         await fetchRestaurant();
         alert("Restaurant added successfully!");
       }
@@ -67,7 +95,7 @@ const VendorDashboard = () => {
     }
   };
 
-  // ✅ Add/Edit Menu Item (NO manual push now)
+  // ✅ Add/Edit Menu Item
   const handleMenuItemSubmit = async (itemData) => {
     try {
       const token = localStorage.getItem("token");
@@ -84,12 +112,9 @@ const VendorDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // 🔥 Refetch updated restaurant data
       await fetchRestaurant();
-
       setEditingMenuItem(null);
       setAddingMenuItem(false);
-
       alert("Menu item saved successfully!");
     } catch (err) {
       console.error("Error saving menu item:", err);
@@ -97,13 +122,13 @@ const VendorDashboard = () => {
     }
   };
 
-  // Edit
+  // ✅ Edit Menu Item
   const handleEdit = (menuItem) => {
     setEditingMenuItem(menuItem);
     setAddingMenuItem(true);
   };
 
-  // Delete
+  // ✅ Delete Menu Item
   const handleDelete = async (menuItemId) => {
     if (!window.confirm("Are you sure you want to delete this item?")) return;
 
@@ -114,9 +139,7 @@ const VendorDashboard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // 🔥 Refetch instead of manual filter
       await fetchRestaurant();
-
       alert("Menu item deleted!");
     } catch (err) {
       console.error("Error deleting menu item:", err);
@@ -133,10 +156,22 @@ const VendorDashboard = () => {
     <div className="vendor-dashboard">
       <h1>Owner Dashboard</h1>
 
+      {/* 🔔 Notifications */}
+      <div className="notification-container">
+        {notifications.map((n, index) => (
+          <div key={n.orderId || index} className="notification">
+            🛎 New Order Received! <br />
+            Order ID: {n.orderId}
+          </div>
+        ))}
+      </div>
+
+      {/* Add Restaurant */}
       {!restaurant && (
         <AddRestaurantForm onRestaurantAdded={handleAddRestaurant} />
       )}
 
+      {/* Restaurant Info */}
       {restaurant && (
         <div className="restaurant-info">
           {restaurant.image && (
@@ -146,6 +181,7 @@ const VendorDashboard = () => {
           <p className="category">{restaurant.category}</p>
           <p>Checkout Time: {restaurant.checkoutTime || "N/A"} mins</p>
 
+          {/* Add Menu Item Button */}
           {!addingMenuItem && !editingMenuItem && (
             <button
               className="add-more-btn"
@@ -155,6 +191,7 @@ const VendorDashboard = () => {
             </button>
           )}
 
+          {/* Add/Edit Menu Form */}
           {addingMenuItem && (
             <AddMenuItemForm
               restaurantId={restaurant.id}
@@ -167,6 +204,7 @@ const VendorDashboard = () => {
             />
           )}
 
+          {/* Menu Items List */}
           <div className="menu-items-grid">
             {restaurant.menuItems?.length > 0 ? (
               restaurant.menuItems.map((item) => (
