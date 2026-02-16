@@ -1,3 +1,4 @@
+// src/components/AddMenuItemForm.jsx
 import React, { useState, useEffect } from "react";
 import "../styles/AddMenuItemForm.css";
 
@@ -6,8 +7,8 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
-  const [loading, setLoading] = useState(false);
 
+  // Populate form if editing
   useEffect(() => {
     if (editItem) {
       setName(editItem.name || "");
@@ -22,7 +23,7 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
     }
   }, [editItem]);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
 
     if (!name || !price) {
@@ -30,47 +31,23 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
       return;
     }
 
-    setLoading(true);
+    // Prepare item data to send to parent
+    const itemData = {
+      restaurantId,
+      name,
+      description,
+      price: parseFloat(price),
+      image,
+      id: editItem?.id, // for edit mode
+    };
 
-    const method = editItem ? "PUT" : "POST";
-    const url = editItem
-      ? `https://quickbite-backend-47wd.onrender.com/api/vendor/menu/${editItem.id}`
-      : "https://quickbite-backend-47wd.onrender.com/api/vendor/menu";
+    onMenuItemAdded(itemData);
 
-    try {
-      const res = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          restaurantId,
-          name,
-          description,
-          price: parseFloat(price),
-          image,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        // Return the updated or new menu item
-        const updatedItem = data.menuItem || data.updated || data;
-        onMenuItemAdded(updatedItem);
-
-        // Clear form
-        setName("");
-        setDescription("");
-        setPrice("");
-        setImage("");
-      } else {
-        alert(data.error || "Failed to add/edit menu item");
-      }
-    } catch (err) {
-      console.error("Error adding/editing menu item:", err);
-      alert("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+    // Clear form
+    setName("");
+    setDescription("");
+    setPrice("");
+    setImage("");
   };
 
   return (
@@ -104,15 +81,14 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
         onChange={(e) => setImage(e.target.value)}
       />
       <div className="form-buttons">
-        <button type="submit" disabled={loading}>
-          {loading ? "Saving..." : editItem ? "Update Item" : "Add Item"}
+        <button type="submit">
+          {editItem ? "Update Item" : "Add Item"}
         </button>
         {editItem && (
           <button
             type="button"
             onClick={onCancel}
             className="cancel-btn"
-            disabled={loading}
           >
             Cancel
           </button>
@@ -123,5 +99,3 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
 };
 
 export default AddMenuItemForm;
-
-
