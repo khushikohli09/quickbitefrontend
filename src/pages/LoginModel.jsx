@@ -12,10 +12,11 @@ const LoginModal = () => {
   const navigate = useNavigate();
   const { user, setUserAndStorage, loading } = useContext(UserContext);
 
-  // ✅ Wait until user is fetched
+  // 🔥 API URL from environment variable
+  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+
   useEffect(() => {
     if (!loading && user) {
-      // Redirect based on role
       if (user.role === "admin") navigate("/admin/dashboard");
       else if (user.role === "vendor") navigate("/vendor/dashboard");
       else navigate("/");
@@ -28,7 +29,8 @@ const LoginModal = () => {
     setLoadingLogin(true);
 
     try {
-      const res = await fetch("https://quickbite-backend-47wd.onrender.com/api/auth/login", {
+      // ✅ Fixed: Use environment variable
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -37,26 +39,39 @@ const LoginModal = () => {
       const data = await res.json();
 
       if (res.ok) {
-        setUserAndStorage(data.user, data.token); // sets user & token
-        // Navigation will automatically happen in useEffect
+        setUserAndStorage(data.user, data.token);
       } else {
         setError(data.error || "Invalid credentials");
       }
     } catch (err) {
-      console.error("Login error:", err);
       setError("Something went wrong. Please try again.");
     } finally {
       setLoadingLogin(false);
     }
   };
 
-  if (loading) return <p>Loading...</p>; // Wait for UserContext fetchUser to complete
+  if (loading) return <p>Loading...</p>;
 
   return (
     <div className="auth-page">
+
+      {/* FLOATING BACKGROUND */}
+      <div className="floating-icons">
+        <span>🍔</span>
+        <span>🍕</span>
+        <span>🍜</span>
+        <span>🍣</span>
+        <span>🍟</span>
+        <span>🍩</span>
+        <span>🌮</span>
+        <span>🍔</span>
+      </div>
+
       <div className="auth-card">
         <h2 className="auth-title">Login</h2>
-        <p className="auth-subtitle">Welcome back! Please login to continue.</p>
+        <p className="auth-subtitle">
+          Welcome back! Please login to continue.
+        </p>
 
         <form onSubmit={handleSubmit} className="auth-form">
           <input
@@ -91,4 +106,3 @@ const LoginModal = () => {
 };
 
 export default LoginModal;
-
