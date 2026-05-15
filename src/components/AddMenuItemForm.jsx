@@ -1,19 +1,47 @@
-// src/components/AddMenuItemForm.jsx
-import React, { useState, useEffect } from "react";
+// AddMenuItemForm.jsx
+
+import React, {
+  useState,
+  useEffect,
+} from "react";
+
 import "../styles/AddMenuItemForm.css";
 
-const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) => {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [image, setImage] = useState("");
+const AddMenuItemForm = ({
+  restaurantId,
+  editItem,
+  onMenuItemAdded,
+  onCancel,
+}) => {
+  const [name, setName] =
+    useState("");
 
-  // Populate form if editing
+  const [description, setDescription] =
+    useState("");
+
+  const [price, setPrice] =
+    useState("");
+
+  const [image, setImage] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  /* =========================================
+     EDIT PREFILL
+  ========================================= */
+
   useEffect(() => {
     if (editItem) {
       setName(editItem.name || "");
-      setDescription(editItem.description || "");
+
+      setDescription(
+        editItem.description || ""
+      );
+
       setPrice(editItem.price || "");
+
       setImage(editItem.image || "");
     } else {
       setName("");
@@ -23,72 +51,129 @@ const AddMenuItemForm = ({ restaurantId, editItem, onMenuItemAdded, onCancel }) 
     }
   }, [editItem]);
 
-  const handleSubmit = (e) => {
+  /* =========================================
+     SUBMIT
+  ========================================= */
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!name || !price) {
-      alert("Please provide name and price");
+      alert(
+        "Please enter name and price"
+      );
+
       return;
     }
 
-    // Prepare item data to send to parent
-    const itemData = {
-      restaurantId,
-      name,
-      description,
-      price: parseFloat(price),
-      image,
-      id: editItem?.id, // for edit mode
-    };
+    try {
+      setLoading(true);
 
-    onMenuItemAdded(itemData);
+      await onMenuItemAdded({
+        restaurantId,
 
-    // Clear form
-    setName("");
-    setDescription("");
-    setPrice("");
-    setImage("");
+        name,
+
+        description,
+
+        price: parseFloat(price),
+
+        image,
+      });
+
+      if (!editItem) {
+        setName("");
+        setDescription("");
+        setPrice("");
+        setImage("");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="add-menu-item-form">
-      <h3>{editItem ? "Edit Menu Item" : "Add New Menu Item"}</h3>
+    <form
+      onSubmit={handleSubmit}
+      className="add-menu-item-form"
+    >
+      <h3>
+        {editItem
+          ? "Edit Menu Item"
+          : "Add Menu Item"}
+      </h3>
+
+      {/* NAME */}
+
       <input
         type="text"
         placeholder="Item Name"
         value={name}
-        onChange={(e) => setName(e.target.value)}
+        onChange={(e) =>
+          setName(e.target.value)
+        }
         required
       />
+
+      {/* DESCRIPTION */}
+
       <input
         type="text"
         placeholder="Description"
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={(e) =>
+          setDescription(
+            e.target.value
+          )
+        }
       />
+
+      {/* PRICE */}
+
       <input
         type="number"
-        step="0.01"
         placeholder="Price"
         value={price}
-        onChange={(e) => setPrice(e.target.value)}
+        onChange={(e) =>
+          setPrice(e.target.value)
+        }
         required
       />
+
+      {/* IMAGE */}
+
       <input
         type="text"
         placeholder="Image URL"
         value={image}
-        onChange={(e) => setImage(e.target.value)}
+        onChange={(e) =>
+          setImage(e.target.value)
+        }
       />
+
+      {/* BUTTONS */}
+
       <div className="form-buttons">
-        <button type="submit">
-          {editItem ? "Update Item" : "Add Item"}
+
+        <button
+          type="submit"
+          disabled={loading}
+        >
+          {loading
+            ? "Saving..."
+            : editItem
+            ? "Update Item"
+            : "Add Item"}
         </button>
-        {editItem && (
+
+        {onCancel && (
           <button
             type="button"
-            onClick={onCancel}
             className="cancel-btn"
+            onClick={onCancel}
+            disabled={loading}
           >
             Cancel
           </button>
