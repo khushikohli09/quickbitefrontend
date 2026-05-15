@@ -1,32 +1,89 @@
-// src/components/Navbar.jsx
-import React, { useState, useContext, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
 import { UserContext } from "../context/UserContext";
 import Cart from "../pages/Cart";
-import { socket } from "../Socket";
+import { io } from "socket.io-client";
+import api from "../api/api";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfilePanel, setShowProfilePanel] = useState(false);
+  const [socket, setSocket] = useState(null);  // ← Socket state
 
-  const { cartItems = []} = useContext(CartContext);
-  const { user, logout, notifications, setNotifications } = useContext(UserContext);
+  const [profileData, setProfileData] = useState(null);
+  const [orderHistory, setOrderHistory] = useState([]);
+
+  const { cartItems = [] } = useContext(CartContext);
+  const { user, logout, notifications, setNotifications } =
+    useContext(UserContext);
+
   const navigate = useNavigate();
 
-  const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
+  // API URL from environment variable
+  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+
+  const toggleMobileMenu = () =>
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+
   const toggleCart = () => setIsCartOpen(!isCartOpen);
 
-  // Vendor receives new orders
+  const getToken = () =>
+    localStorage.getItem("token") ||
+    sessionStorage.getItem("token");
+
+  // ================= ROLE =================
+  const role = user?.role?.toUpperCase();
+  const isUser = role === "USER";
+  const isVendor = role === "VENDOR";
+
+  // ---------------- PROFILE (Using api.js) ----------------
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const token = getToken();
+
+      if (!token || !user?.id || isVendor) return;
+
+      try {
+        const profileRes = await api.get("/users/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setProfileData(profileRes.data);
+
+        const orderRes = await api.get("/users/me/orders", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setOrderHistory(orderRes.data || []);
+      } catch (err) {
+        console.log("Profile fetch error:", err);
+      }
+    };
+
+    fetchProfile();
+  }, [user, isVendor]);
+
+  // ---------------- SOCKET ORDER HANDLER ----------------
   const handleOrderReceived = useCallback(
     (order) => {
-      setNotifications((prev) => [{ ...order, status: "Pending", isNew: true }, ...prev]);
+      setNotifications((prev) => [
+        { ...order, status: "Pending", isNew: true },
+        ...prev,
+      ]);
+
       setTimeout(() => {
         setNotifications((prev) =>
           prev.map((n) =>
-            n.orderId === order.orderId ? { ...n, isNew: false } : n
+            n.orderId === order.orderId
+              ? { ...n, isNew: false }
+              : n
           )
         );
       }, 1500);
@@ -34,148 +91,268 @@ const Navbar = () => {
     [setNotifications]
   );
 
+  // ---------------- SOCKET CONNECTION FUNCTIONS (Merged) ----------------
+  const connectSocket = useCallback((userId, userRole) => {
+    const SOCKET_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+    
+    const newSocket = io(SOCKET_URL, {
+      transports: ["websocket", "polling"],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      autoConnect: true,
+    });
+
+    // Socket event listeners
+    newSocket.on("connect", () => {
+      console.log("✅ WebSocket connected:", newSocket.id);
+      newSocket.emit("register", { userId: userId, role: userRole });
+    });
+
+    newSocket.on("disconnect", (reason) => {
+      console.log("❌ WebSocket disconnected:", reason);
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.log("⚠️ WebSocket connection error:", error.message);
+    });
+
+    return newSocket;
+  }, []);
+
+  const disconnectSocket = useCallback((socketInstance) => {
+    if (socketInstance && socketInstance.connected) {
+      socketInstance.disconnect();
+      console.log("🔌 Socket manually disconnected");
+    }
+  }, []);
+
+  // ---------------- SOCKET SETUP ----------------
   useEffect(() => {
     if (!user?.id) return;
 
-    if (!socket.connected) socket.connect();
-    socket.emit("register", { userId: user.id, role: user.role.toUpperCase() });
+    // Create and connect socket
+    const newSocket = connectSocket(user.id, role);
+    setSocket(newSocket);
 
-    if (user.role.toUpperCase() === "VENDOR") {
-      socket.on("order-received", handleOrderReceived);
+    if (isVendor) {
+      newSocket.on("order-received", handleOrderReceived);
     }
 
+    // Cleanup on unmount
     return () => {
-      socket.off("order-received", handleOrderReceived);
+      if (isVendor) {
+        newSocket.off("order-received", handleOrderReceived);
+      }
+      disconnectSocket(newSocket);
     };
-  }, [user, handleOrderReceived]);
+  }, [user?.id, role, isVendor, handleOrderReceived, connectSocket, disconnectSocket]);
 
+  // ---------------- ACTIONS ----------------
   const confirmOrder = (order) => {
-    socket.emit("update-order-status", {
-      orderId: order.orderId,
-      userId: order.userId,
-      status: "Confirmed",
-      total: order.total,
-    });
+    if (socket && socket.connected) {
+      socket.emit("update-order-status", {
+        orderId: order.id || order.orderId,
+        userId: order.userId,
+        status: "Confirmed",
+        total: order.total,
+      });
+    }
 
-    // Update status locally, but keep notification
     setNotifications((prev) =>
       prev.map((n) =>
-        n.orderId === order.orderId ? { ...n, status: "Confirmed" } : n
+        (n.id || n.orderId) === (order.id || order.orderId)
+          ? { ...n, status: "Confirmed" }
+          : n
       )
     );
   };
 
   const readyToDeliver = (order) => {
-    socket.emit("update-order-status", {
-      orderId: order.orderId,
-      userId: order.userId,
-      status: "Ready to Deliver",
-      total: order.total,
-    });
+    if (socket && socket.connected) {
+      socket.emit("update-order-status", {
+        orderId: order.id || order.orderId,
+        userId: order.userId,
+        status: "Ready to Deliver",
+        total: order.total,
+      });
+    }
 
-    // Remove notification after ready to deliver
-    setNotifications((prev) => prev.filter((n) => n.orderId !== order.orderId));
+    setNotifications((prev) =>
+      prev.filter(
+        (n) =>
+          (n.id || n.orderId) !== (order.id || order.orderId)
+      )
+    );
   };
+
+  const membership = profileData?.membership || null;
 
   return (
     <>
       <nav className="navbar">
+
+        {/* LOGO */}
         <div className="logo">
           <Link to="/">QuickBite</Link>
         </div>
 
-        {/* Center links */}
+        {/* CENTER LINKS */}
         <div className={`navbar-center ${isMobileMenuOpen ? "active" : ""}`}>
-          <Link className="nav-link" to="/restaurants">Restaurants</Link>
-          <Link className="nav-link" to="/about">About</Link>
-          <Link className="nav-link" to="/contact">Contact</Link>
+          <Link to="/restaurants" className="nav-link">Restaurants</Link>
+          <Link to="/about" className="nav-link">About</Link>
+          <Link to="/contact" className="nav-link">Contact</Link>
         </div>
 
+        {/* RIGHT SIDE */}
         <div className="navbar-right">
+
           {!user ? (
             <>
-              <Link to="/login">
-                <button className="nav-btn login-btn">Login</button>
-              </Link>
-              <Link to="/signup">
-                <button className="nav-btn signup-btn">Signup</button>
-              </Link>
+              <Link to="/login"><button className="nav-btn">Login</button></Link>
+              <Link to="/signup"><button className="nav-btn">Signup</button></Link>
             </>
           ) : (
             <>
-              {/* Cart for users */}
-              {user.role.toUpperCase() !== "VENDOR" && (
+              {/* CART */}
+              {isUser && (
                 <div className="cart-icon-wrapper" onClick={toggleCart}>
-                  <span className="cart-icon">🛒</span>
-                  {cartItems.length > 0 && <span className="badge">{cartItems.length}</span>}
+                  🛒
+                  {cartItems.length > 0 && (
+                    <span className="badge">{cartItems.length}</span>
+                  )}
                 </div>
               )}
 
-              {/* Notifications for vendors */}
-              {user.role.toUpperCase() === "VENDOR" && (
+              {/* NOTIFICATIONS */}
+              {isVendor && (
                 <div className="notification-wrapper">
                   <button
-                    className="nav-btn notification-btn"
-                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="nav-btn"
+                    onClick={() =>
+                      setShowNotifications(!showNotifications)
+                    }
                   >
-                    🔔 {notifications.length > 0 && <span className="badge">{notifications.length}</span>}
+                    🔔
+                    {notifications.length > 0 && (
+                      <span className="badge">{notifications.length}</span>
+                    )}
                   </button>
 
                   {showNotifications && (
                     <div className="notification-dropdown">
-                      {notifications.length === 0 && <div className="notification-item">No new orders</div>}
-                      <div className="notification-list">
-                        {notifications.map((n) => (
-                          <div
-                            key={n.orderId}
-                            className={`notification-item ${n.isNew ? "new-order" : ""}`}
-                          >
-                            <div>
-                              <strong>Order #{n.orderId}</strong><br />
-                              From User {n.userId} - ₹{n.total}<br />
-                              Status: <strong>{n.status}</strong>
-                            </div>
-                            <div style={{ marginTop: "5px", display: "flex", gap: "5px" }}>
-                              <button
-                                className="confirm-btn"
-                                onClick={() => confirmOrder(n)}
-                                disabled={n.status === "Confirmed"}
-                              >
-                                {n.status === "Confirmed" ? "Confirmed" : "Confirm"}
-                              </button>
-                              <button className="ready-btn" onClick={() => readyToDeliver(n)}>
-                                Ready to Deliver
-                              </button>
-                            </div>
+                      {notifications.length === 0 ? (
+                        <div className="notification-item">
+                          No new orders
+                        </div>
+                      ) : (
+                        notifications.map((n) => (
+                          <div key={n.id || n.orderId} className="notification-item">
+                            <strong>Order #{n.id || n.orderId}</strong>
+                            <p>User {n.userId} - ₹{n.total}</p>
+                            <p>Status: {n.status}</p>
+
+                            <button onClick={() => confirmOrder(n)}>Confirm</button>
+                            <button onClick={() => readyToDeliver(n)}>Ready</button>
                           </div>
-                        ))}
-                      </div>
+                        ))
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
-              <span className="nav-user">Hello, {user.name}</span>
+              {/* PROFILE (USER ONLY) */}
+              {isUser && (
+                <div className="profile-wrapper">
+                  <div
+                    className="profile-icon"
+                    onClick={() => setShowProfilePanel(true)}
+                  >
+                    {user.name?.charAt(0).toUpperCase()}
+                  </div>
+
+                  <span className="username">{user.name}</span>
+                </div>
+              )}
+
+              {/* 🔥 LOGOUT (ALL ROLES) */}
               <button
-                className="nav-btn signup-btn"
-                onClick={() => { logout(); navigate("/"); }}
+                className="nav-btn logout-btn"
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
               >
                 Logout
               </button>
+
+              {/* HAMBURGER */}
+              <div className="hamburger" onClick={toggleMobileMenu}>
+                <div className="bar"></div>
+                <div className="bar"></div>
+                <div className="bar"></div>
+              </div>
             </>
           )}
-
-          {/* Hamburger for mobile */}
-          <div className="hamburger" onClick={toggleMobileMenu}>
-            <div className="bar"></div>
-            <div className="bar"></div>
-            <div className="bar"></div>
-          </div>
         </div>
       </nav>
 
-      {/* User cart modal */}
-      {user?.role.toUpperCase() !== "VENDOR" && (
+      {/* PROFILE PANEL */}
+      {isUser && showProfilePanel && (
+        <>
+          <div
+            className="profile-overlay"
+            onClick={() => setShowProfilePanel(false)}
+          ></div>
+
+          <div className="profile-panel">
+            <div className="profile-header">
+              <h2>👤 My Profile</h2>
+              <button
+                className="close-btn"
+                onClick={() => setShowProfilePanel(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p><strong>Name:</strong> {profileData?.name || user?.name}</p>
+            <p><strong>Email:</strong> {profileData?.email}</p>
+
+            <h3>👑 Membership</h3>
+            {membership ? (
+              <div className="membership-card">
+                <p>Status: <b style={{ color: "green" }}>Active</b></p>
+                <p>Plan: {membership.plan?.name || "Premium"}</p>
+              </div>
+            ) : (
+              <button onClick={() => navigate("/membership")}>
+                Upgrade to Premium
+              </button>
+            )}
+
+            <h3>🧾 Order History</h3>
+
+            {orderHistory.map((o) => (
+              <div key={o.id} className="order-card">
+                <p><b>Order #{o.id}</b></p>
+
+                {o.items?.map((item, idx) => (
+                  <p key={idx}>
+                    🍽 <b>{item.menuItem?.name}</b> × {item.quantity}
+                  </p>
+                ))}
+
+                <p>💰 Total: ₹{o.total}</p>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* CART */}
+      {isUser && (
         <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
       )}
     </>
@@ -183,4 +360,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
