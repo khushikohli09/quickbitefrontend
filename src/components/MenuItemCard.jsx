@@ -26,6 +26,9 @@ const Navbar = () => {
 
   const navigate = useNavigate();
 
+  // ✅ FIX 1: API URL from environment variable
+  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+
   const toggleMobileMenu = () =>
     setIsMobileMenuOpen(!isMobileMenuOpen);
 
@@ -40,7 +43,7 @@ const Navbar = () => {
   const isUser = role === "USER";
   const isVendor = role === "VENDOR";
 
-  // ---------------- PROFILE ----------------
+  // ---------------- PROFILE (FIXED) ----------------
   useEffect(() => {
     const fetchProfile = async () => {
       const token = getToken();
@@ -48,8 +51,9 @@ const Navbar = () => {
       if (!token || !user?.id || isVendor) return;
 
       try {
+        // ✅ FIX 2: Using API_URL instead of hardcoded localhost
         const profileRes = await fetch(
-          "http://localhost:5000/api/users/me",
+          `${API_URL}/api/users/me`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -60,8 +64,9 @@ const Navbar = () => {
         const profile = await profileRes.json();
         setProfileData(profile);
 
+        // ✅ FIX 3: Using API_URL instead of hardcoded localhost
         const orderRes = await fetch(
-          "http://localhost:5000/api/users/me/orders",
+          `${API_URL}/api/users/me/orders`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -77,7 +82,7 @@ const Navbar = () => {
     };
 
     fetchProfile();
-  }, [user, isVendor]);
+  }, [user, isVendor, API_URL]);  // ✅ FIX 4: Added API_URL to dependencies
 
   // ---------------- SOCKET ----------------
   const handleOrderReceived = useCallback(
@@ -121,12 +126,14 @@ const Navbar = () => {
 
   // ---------------- ACTIONS ----------------
   const confirmOrder = (order) => {
-    socket.emit("update-order-status", {
-      orderId: order.id || order.orderId,
-      userId: order.userId,
-      status: "Confirmed",
-      total: order.total,
-    });
+    if (socket.connected) {
+      socket.emit("update-order-status", {
+        orderId: order.id || order.orderId,
+        userId: order.userId,
+        status: "Confirmed",
+        total: order.total,
+      });
+    }
 
     setNotifications((prev) =>
       prev.map((n) =>
@@ -138,12 +145,14 @@ const Navbar = () => {
   };
 
   const readyToDeliver = (order) => {
-    socket.emit("update-order-status", {
-      orderId: order.id || order.orderId,
-      userId: order.userId,
-      status: "Ready to Deliver",
-      total: order.total,
-    });
+    if (socket.connected) {
+      socket.emit("update-order-status", {
+        orderId: order.id || order.orderId,
+        userId: order.userId,
+        status: "Ready to Deliver",
+        total: order.total,
+      });
+    }
 
     setNotifications((prev) =>
       prev.filter(
@@ -312,9 +321,6 @@ const Navbar = () => {
                 ))}
 
                 <p>💰 Total: ₹{o.total}</p>
-
-                
-               
               </div>
             ))}
           </div>
