@@ -42,7 +42,7 @@ const AboutUs = () => {
             </div>
             <div className="mission-image">
               <div className="image-placeholder">
-                <span>Team Collaboration</span>
+                <span></span>
               </div>
             </div>
           </div>
