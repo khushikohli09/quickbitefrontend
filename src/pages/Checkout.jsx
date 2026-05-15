@@ -8,89 +8,164 @@ import { socket } from "../Socket";
 import "../styles/Checkout.css";
 
 export default function Checkout() {
-  const { state } = useLocation();
-  const { orderItem } = state || {};
+  const location = useLocation();
+  const orderItems = location.state?.orderItems || [];
+
   const { user } = useContext(UserContext);
-  const { cartItems, clearCart } = useContext(CartContext);
+  const { cartItems } = useContext(CartContext);
+
+  const navigate = useNavigate();
 
   const [items, setItems] = useState([]);
   const [status, setStatus] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const [deliveryInfo, setDeliveryInfo] = useState({
     name: user?.name || "",
     phone: "",
     address: "",
   });
-  const [paymentMethod, setPaymentMethod] = useState("Cash");
-  const [orderStatus, setOrderStatus] = useState(""); // For live status
 
-  const navigate = useNavigate();
+  const [paymentMethod] = useState("Cash");
 
-  // Initialize items
+  const [membership, setMembership] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponDiscount, setCouponDiscount] = useState(0);
+  const [membershipDiscount, setMembershipDiscount] = useState(0);
+  const [deliveryCharge, setDeliveryCharge] = useState(40);
+
+  // ---------------- LOAD ITEMS (REORDER + CART FIX) ----------------
   useEffect(() => {
-    if (orderItem) setItems([{ ...orderItem, quantity: 1 }]);
-    else setItems(cartItems);
-  }, [orderItem, cartItems]);
+    if (orderItems && orderItems.length > 0) {
+      const normalized = orderItems.map((i) => ({
+        id: i.menuItem?.id || i.id,
+        name: i.menuItem?.name || i.name,
+        price: i.menuItem?.price || i.price,
+        quantity: i.quantity || 1,
+        restaurantId: i.restaurantId,
+      }));
 
-  // Socket listener for vendor confirmation & status updates
+      setItems(normalized);
+    } else {
+      setItems(cartItems);
+    }
+  }, [orderItems, cartItems]);
+
+  // ---------------- SOCKET ----------------
   useEffect(() => {
     if (!user?.id) return;
 
-    socket.emit("register", { userId: user.id, role: "USER" });
+    if (!socket.connected) socket.connect();
 
-    const handleOrderConfirmed = (order) => {
-      setIsLoading(false);
-      clearCart();
-      setOrderStatus("Confirmed");
-      navigate("/order-success", {
-        state: {
-          userName: user.name || "User",
-          orderId: order.orderId,
-          total: order.total,
-        },
-      });
+    socket.emit("register", {
+      userId: user.id,
+      role: "USER",
+    });
+  }, [user]);
+
+  // ---------------- COUPONS ----------------
+  useEffect(() => {
+    const fetchCoupons = async () => {
+      try {
+        const res = await api.get("/coupons", {
+          headers: {
+            Authorization: `Bearer ${
+              localStorage.getItem("token") ||
+              sessionStorage.getItem("token")
+            }`,
+          },
+        });
+
+        setCoupons(res.data.coupons || []);
+      } catch {
+        setCoupons([]);
+      }
     };
 
-    const handleOrderStatusUpdated = (update) => {
-      setOrderStatus(update.status);
-      setStatus(`Order #${update.orderId} is now ${update.status}`);
+    fetchCoupons();
+  }, []);
+
+  // ---------------- MEMBERSHIP ----------------
+  useEffect(() => {
+    const fetchMembership = async () => {
+      try {
+        const res = await api.get("/membership/my-membership", {
+          headers: {
+            Authorization: `Bearer ${
+              localStorage.getItem("token") ||
+              sessionStorage.getItem("token")
+            }`,
+          },
+        });
+
+        setMembership(res.data.membership);
+      } catch {
+        setMembership(null);
+      }
     };
 
-    // NEW: Handle Ready to Deliver
-    const handleOrderReady = (update) => {
-      setOrderStatus("Ready to Deliver");
-      setStatus(`Order #${update.orderId} is Ready to Deliver!`);
-      alert(`Your order #${update.orderId} is Ready to Deliver!`);
-    };
+    fetchMembership();
+  }, []);
 
-    socket.on("order-created", handleOrderConfirmed);
-    socket.on("order-status-updated", handleOrderStatusUpdated);
-    socket.on("order-ready", handleOrderReady);
+  // ---------------- BILL CALCULATION ----------------
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
 
-    return () => {
-      socket.off("order-created", handleOrderConfirmed);
-      socket.off("order-status-updated", handleOrderStatusUpdated);
-      socket.off("order-ready", handleOrderReady);
-    };
-  }, [user, clearCart, navigate]);
+  useEffect(() => {
+    if (membership) setDeliveryCharge(0);
+    else setDeliveryCharge(subtotal >= 500 ? 0 : 40);
+  }, [membership, subtotal]);
 
-  const handleInputChange = (e) => {
-    setDeliveryInfo({ ...deliveryInfo, [e.target.name]: e.target.value });
-  };
+  useEffect(() => {
+    if (membership?.plan) {
+      const plan = membership.plan;
 
-  const validatePhone = (phone) => /^\d{10}$/.test(phone);
+      if (subtotal >= plan.minOrderAmount) {
+        setMembershipDiscount((subtotal * plan.discountPercent) / 100);
+      } else {
+        setMembershipDiscount(0);
+      }
+    }
+  }, [membership, subtotal]);
 
-  const placeOrder = async () => {
-    if (!items.length) return setStatus("No items to order");
-    if (!deliveryInfo.name || !deliveryInfo.phone || !deliveryInfo.address)
-      return setStatus("Please fill in all delivery details");
-    if (!validatePhone(deliveryInfo.phone))
-      return setStatus("Phone number must be 10 digits");
+  const applyCoupon = async () => {
+    if (membership) return alert("Coupon not allowed with membership");
 
     try {
+      const res = await api.post(
+        "/coupons/apply",
+        { code: couponCode, price: subtotal },
+        {
+          headers: {
+            Authorization: `Bearer ${
+              localStorage.getItem("token") ||
+              sessionStorage.getItem("token")
+            }`,
+          },
+        }
+      );
+
+      setCouponDiscount(res.data.discountAmount || 0);
+      alert("Coupon applied");
+    } catch {
+      alert("Invalid coupon");
+    }
+  };
+
+  const totalAmount =
+    subtotal + deliveryCharge - membershipDiscount - couponDiscount;
+
+  // ---------------- PLACE ORDER ----------------
+  const placeOrder = async () => {
+    try {
+      setIsLoading(true);
+
       const orderData = {
         userId: user.id,
-        restaurantId: items[0].restaurantId,
+        restaurantId: items[0]?.restaurantId,
         items: items.map((i) => ({
           menuItemId: i.id,
           quantity: i.quantity,
@@ -98,108 +173,131 @@ export default function Checkout() {
         })),
         deliveryInfo,
         paymentMethod,
-        total: items.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        total: totalAmount,
       };
 
       const res = await api.post("/orders/confirm", orderData, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: {
+          Authorization: `Bearer ${
+            localStorage.getItem("token") ||
+            sessionStorage.getItem("token")
+          }`,
+        },
       });
 
-      const orderId = res.data.orderId;
+      const orderId = res.data.orderId || res.data.order?.id;
 
       socket.emit("place-order", {
         orderId,
-        restaurantId: items[0].restaurantId,
+        restaurantId: items[0]?.restaurantId,
         items,
         userId: user.id,
-        total: orderData.total,
+        total: totalAmount,
       });
 
-      setIsLoading(true);
-      setStatus("Order placed! Waiting for vendor confirmation...");
+      navigate("/order-success", { state: { orderId } });
     } catch (err) {
-      console.error("Failed to place order:", err);
-      setStatus(err.response?.data?.error || "Failed to place order.");
+      setStatus("Order failed");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  if (!items.length) return <p>No items selected for checkout.</p>;
-
-  const totalAmount = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-
   return (
     <div className="checkout-container">
-      <h1>Checkout</h1>
 
-      <div className="cart-items">
-        {items.map((item) => (
-          <div key={item.id} className="cart-item">
-            {item.image && <img src={item.image} alt={item.name} />}
-            <div className="cart-item-info">
-              <h2>{item.name}</h2>
-              <p>Quantity: {item.quantity}</p>
-              <p>
-                Price: ₹{item.price} × {item.quantity} = ₹
-                {item.price * item.quantity}
-              </p>
-            </div>
+      <h1 className="checkout-title">Checkout</h1>
+
+      {/* ITEMS */}
+      <div className="checkout-card">
+        <h2>Items</h2>
+        {items.map((item, idx) => (
+          <div key={item.id || idx} className="item-row">
+            <span>{item.name}</span>
+            <span>₹{item.price} × {item.quantity}</span>
           </div>
         ))}
       </div>
 
-      <h2>Total: ₹{totalAmount}</h2>
+      {/* COUPONS */}
+      {!membership && (
+        <div className="checkout-card">
+          <h2>Coupons</h2>
 
-      <h3>Delivery Details</h3>
-      <input
-        type="text"
-        name="name"
-        placeholder="Full Name"
-        value={deliveryInfo.name}
-        onChange={handleInputChange}
-      />
-      <input
-        type="text"
-        name="phone"
-        placeholder="Phone Number"
-        value={deliveryInfo.phone}
-        onChange={handleInputChange}
-      />
-      <textarea
-        name="address"
-        placeholder="Delivery Address"
-        value={deliveryInfo.address}
-        onChange={handleInputChange}
-      ></textarea>
+          <div className="coupon-list">
+            {coupons.map((c) => (
+              <button
+                key={c.id}
+                className="coupon-chip"
+                onClick={() => setCouponCode(c.code)}
+              >
+                {c.code} ({c.discount}%)
+              </button>
+            ))}
+          </div>
 
-      <h3>Payment Method</h3>
-      <select
-        value={paymentMethod}
-        onChange={(e) => setPaymentMethod(e.target.value)}
+          <div className="coupon-input">
+            <input
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+              placeholder="Enter coupon"
+            />
+            <button onClick={applyCoupon}>Apply</button>
+          </div>
+        </div>
+      )}
+
+      {/* BILL */}
+      <div className="checkout-card">
+        <h2>Bill Summary</h2>
+
+        <p>Subtotal: ₹{subtotal}</p>
+        <p>Delivery: ₹{deliveryCharge}</p>
+        <p>Membership Discount: -₹{membershipDiscount.toFixed(2)}</p>
+        <p>Coupon Discount: -₹{couponDiscount}</p>
+
+        <h3 className="total">Total: ₹{totalAmount.toFixed(2)}</h3>
+      </div>
+
+      {/* DELIVERY */}
+      <div className="checkout-card">
+        <h2>Delivery Details</h2>
+
+        <input
+          placeholder="Name"
+          value={deliveryInfo.name}
+          onChange={(e) =>
+            setDeliveryInfo({ ...deliveryInfo, name: e.target.value })
+          }
+        />
+
+        <input
+          placeholder="Phone"
+          value={deliveryInfo.phone}
+          onChange={(e) =>
+            setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })
+          }
+        />
+
+        <textarea
+          placeholder="Address"
+          value={deliveryInfo.address}
+          onChange={(e) =>
+            setDeliveryInfo({ ...deliveryInfo, address: e.target.value })
+          }
+        />
+      </div>
+
+      {/* PLACE ORDER */}
+      <button
+        className="place-order-btn"
+        onClick={placeOrder}
+        disabled={isLoading}
       >
-        <option value="Cash">Cash on Delivery</option>
-        <option value="Card">Card Payment</option>
-      </select>
-
-      <button onClick={placeOrder} disabled={isLoading}>
         {isLoading ? "Placing Order..." : "Place Order"}
       </button>
 
-      {status && (
-        <p
-          className={`status ${
-            status.toLowerCase().includes("success") ? "success" : "error"
-          }`}
-        >
-          {status}
-        </p>
-      )}
-
-      {orderStatus && (
-        <p className="status" style={{ color: "#ff416c", fontWeight: "600" }}>
-          Current Status: {orderStatus}
-        </p>
-      )}
+      {status && <p className="status">{status}</p>}
     </div>
   );
 }
