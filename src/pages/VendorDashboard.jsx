@@ -1,210 +1,493 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+// VendorDashboard.jsx
+
+import React, {
+  useState,
+  useEffect,
+  useContext,
+} from "react";
+
 import { UserContext } from "../context/UserContext";
+
 import AddRestaurantForm from "../components/AddRestaurantForm";
 import AddMenuItemForm from "../components/AddMenuItemForm";
 import MenuItemCard from "../components/MenuItemCard";
+
 import api from "../api/api";
-import { socket, registerSocketUser } from "../Socket"; // ✅ make sure file name matches exactly
+
 import "../styles/Vendor.css";
 import "../styles/MenuItemCard.css";
 
 const VendorDashboard = () => {
-  const { user, loading } = useContext(UserContext);
-  const [restaurant, setRestaurant] = useState(null);
-  const [fetching, setFetching] = useState(true);
-  const [addingMenuItem, setAddingMenuItem] = useState(false);
-  const [editingMenuItem, setEditingMenuItem] = useState(null);
-  const [notifications, setNotifications] = useState([]);
+  const { user, loading } =
+    useContext(UserContext);
 
-  // 🔥 Memoized fetchRestaurant to satisfy ESLint
-  const fetchRestaurant = useCallback(async () => {
+  const [restaurant, setRestaurant] =
+    useState(null);
+
+  const [fetching, setFetching] =
+    useState(true);
+
+  const [addingMenuItem, setAddingMenuItem] =
+    useState(false);
+
+  const [editingMenuItem, setEditingMenuItem] =
+    useState(null);
+
+  /* =========================================
+     FETCH RESTAURANT
+  ========================================= */
+
+  useEffect(() => {
     if (!user) return;
 
-    try {
-      const token = localStorage.getItem("token");
-      const vendorId = user.id || user._id;
+    const fetchRestaurant = async () => {
+      try {
+        const token =
+          localStorage.getItem("token");
 
-      const res = await api.get(`/vendor/dashboard?vendorId=${vendorId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        const vendorId =
+          user.id || user._id;
 
-      if (res.data.restaurants?.length > 0) {
-        const rest = res.data.restaurants[0];
-        setRestaurant({ ...rest, menuItems: rest.menuItems || [] });
-      } else {
+        const res = await api.get(
+          `/vendor/dashboard?vendorId=${vendorId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (
+          res.data.restaurants?.length > 0
+        ) {
+          const rest =
+            res.data.restaurants[0];
+
+          setRestaurant({
+            ...rest,
+            menuItems:
+              rest.menuItems || [],
+          });
+        } else {
+          setRestaurant(null);
+        }
+      } catch (err) {
+        console.error(
+          "Error fetching restaurant:",
+          err
+        );
+
         setRestaurant(null);
+      } finally {
+        setFetching(false);
       }
-    } catch (err) {
-      console.error("Error fetching restaurant:", err);
-      setRestaurant(null);
-    } finally {
-      setFetching(false);
-    }
-  }, [user]);
-
-  // 🔔 SOCKET NOTIFICATIONS
-  useEffect(() => {
-    if (user) {
-      registerSocketUser(user.id || user._id, user.role);
-
-      socket.on("order-received", (data) => {
-        setNotifications((prev) => [...prev, data]);
-
-        // ⏳ Auto remove after 3 minutes
-        setTimeout(() => {
-          setNotifications((prev) =>
-            prev.filter((n) => n.orderId !== data.orderId)
-          );
-        }, 180000);
-      });
-    }
-
-    return () => {
-      socket.off("order-received");
     };
+
+    fetchRestaurant();
   }, [user]);
 
-  // 🔥 Fetch restaurant whenever user or fetchRestaurant changes
-  useEffect(() => {
-    fetchRestaurant();
-  }, [user, fetchRestaurant]);
+  /* =========================================
+     ADD RESTAURANT
+  ========================================= */
 
-  // ✅ Add restaurant
-  const handleAddRestaurant = async (data) => {
+  const handleAddRestaurant = async (
+    data
+  ) => {
     try {
-      const token = localStorage.getItem("token");
-      const vendorId = user.id || user._id;
+      const token =
+        localStorage.getItem("token");
+
+      const vendorId =
+        user.id || user._id;
 
       const res = await api.post(
         "/vendor/restaurant",
-        { ...data, ownerId: vendorId },
-        { headers: { Authorization: `Bearer ${token}` } }
+        {
+          ...data,
+          ownerId: vendorId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
       );
 
       if (res.data.restaurant) {
-        await fetchRestaurant();
-        alert("Restaurant added successfully!");
+        setRestaurant({
+          ...res.data.restaurant,
+          menuItems: [],
+        });
+
+        alert(
+          "Restaurant added successfully 🍕"
+        );
       }
     } catch (err) {
-      console.error("Error adding restaurant:", err);
-      alert("Failed to add restaurant.");
+      console.error(err);
+
+      alert("Failed to add restaurant");
     }
   };
 
-  // ✅ Add/Edit Menu Item
-  const handleMenuItemSubmit = async (itemData) => {
-    try {
-      const token = localStorage.getItem("token");
-      const method = editingMenuItem ? "PUT" : "POST";
-      const url = editingMenuItem
-        ? `/vendor/menu/${editingMenuItem.id}`
-        : `/vendor/menu`;
+  /* =========================================
+     ADD / EDIT MENU ITEM
+  ========================================= */
 
-      const body = editingMenuItem
-        ? { ...itemData }
-        : { ...itemData, restaurantId: restaurant.id };
+  const handleMenuItemSubmit =
+    async (itemData) => {
+      try {
+        const token =
+          localStorage.getItem("token");
 
-      await api[method.toLowerCase()](url, body, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+        const isEditing =
+          !!editingMenuItem;
 
-      await fetchRestaurant();
-      setEditingMenuItem(null);
-      setAddingMenuItem(false);
-      alert("Menu item saved successfully!");
-    } catch (err) {
-      console.error("Error saving menu item:", err);
-      alert("Failed to save menu item.");
-    }
-  };
+        const menuItemId =
+          editingMenuItem?.id ||
+          editingMenuItem?._id;
+
+        const method = isEditing
+          ? "put"
+          : "post";
+
+        const url = isEditing
+          ? `/vendor/menu/${menuItemId}`
+          : `/vendor/menu`;
+
+        const body = {
+          ...itemData,
+          restaurantId:
+            restaurant.id ||
+            restaurant._id,
+        };
+
+        const res = await api[method](
+          url,
+          body,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const savedItem =
+          res.data.menuItem ||
+          res.data.updated;
+
+        if (isEditing) {
+          setRestaurant((prev) => ({
+            ...prev,
+
+            menuItems:
+              prev.menuItems.map((i) =>
+                (i.id || i._id) ===
+                menuItemId
+                  ? savedItem
+                  : i
+              ),
+          }));
+
+          setEditingMenuItem(null);
+        } else {
+          setRestaurant((prev) => {
+            const exists =
+              prev.menuItems.some(
+                (i) =>
+                  (i.id || i._id) ===
+                  (savedItem.id ||
+                    savedItem._id)
+              );
+
+            if (exists) return prev;
+
+            return {
+              ...prev,
+
+              menuItems: [
+                ...prev.menuItems,
+                savedItem,
+              ],
+            };
+          });
+        }
+
+        setAddingMenuItem(false);
+
+        alert(
+          isEditing
+            ? "Menu item updated!"
+            : "Menu item added!"
+        );
+      } catch (err) {
+        console.error(err);
+
+        alert(
+          "Failed to save menu item"
+        );
+      }
+    };
+
+  /* =========================================
+     EDIT
+  ========================================= */
 
   const handleEdit = (menuItem) => {
     setEditingMenuItem(menuItem);
+
     setAddingMenuItem(true);
+
+    window.scrollTo({
+      top: 350,
+      behavior: "smooth",
+    });
   };
 
-  const handleDelete = async (menuItemId) => {
-    if (!window.confirm("Are you sure you want to delete this item?")) return;
+  /* =========================================
+     DELETE
+  ========================================= */
+
+  const handleDelete = async (
+    menuItemId
+  ) => {
+    const confirmDelete =
+      window.confirm(
+        "Delete this item?"
+      );
+
+    if (!confirmDelete) return;
 
     try {
-      const token = localStorage.getItem("token");
+      const token =
+        localStorage.getItem("token");
 
-      await api.delete(`/vendor/menu/${menuItemId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(
+        `/vendor/menu/${menuItemId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      await fetchRestaurant();
-      alert("Menu item deleted!");
+      setRestaurant((prev) => ({
+        ...prev,
+
+        menuItems:
+          prev.menuItems.filter(
+            (i) =>
+              (i.id || i._id) !==
+              menuItemId
+          ),
+      }));
+
+      alert("Menu item deleted");
     } catch (err) {
-      console.error("Error deleting menu item:", err);
-      alert("Failed to delete menu item.");
+      console.error(err);
+
+      alert("Delete failed");
     }
   };
 
-  if (!user) return <div>Please log in as vendor</div>;
-  if (user.role?.toUpperCase() !== "VENDOR")
-    return <div>Access denied. Only vendors can view this page.</div>;
-  if (loading || fetching) return <div>Loading Vendor Dashboard...</div>;
+  /* =========================================
+     AUTH
+  ========================================= */
+
+  if (!user) {
+    return (
+      <div className="vendor-message">
+        Please login as vendor
+      </div>
+    );
+  }
+
+  if (
+    user.role?.toUpperCase() !==
+    "VENDOR"
+  ) {
+    return (
+      <div className="vendor-message">
+        Access denied
+      </div>
+    );
+  }
+
+  if (loading || fetching) {
+    return (
+      <div className="vendor-loader">
+        <div className="loader-circle"></div>
+
+        <p>Loading Dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="vendor-dashboard">
-      <h1>Owner Dashboard</h1>
 
-      {/* 🔔 Notifications */}
-      <div className="notification-container">
-        {notifications.map((n) => (
-          <div key={n.orderId} className="notification">
-            🛎 New Order Received! <br />
-            Order ID: {n.orderId}
-          </div>
-        ))}
+      {/* HEADING */}
+
+      <div className="vendor-heading-wrapper">
+        <h1>Owner Dashboard</h1>
+
+        <p>
+          Manage your restaurant &
+          menu 🚀
+        </p>
       </div>
 
+      {/* NO RESTAURANT */}
+
       {!restaurant && (
-        <AddRestaurantForm onRestaurantAdded={handleAddRestaurant} />
+        <div className="empty-restaurant-box">
+          <h2>
+            Create Your Restaurant
+          </h2>
+
+          <p>
+            Add your restaurant to
+            start selling food.
+          </p>
+
+          <AddRestaurantForm
+            onRestaurantAdded={
+              handleAddRestaurant
+            }
+          />
+        </div>
       )}
 
+      {/* RESTAURANT */}
+
       {restaurant && (
-        <div className="restaurant-info">
-          {restaurant.image && <img src={restaurant.image} alt={restaurant.name} />}
-          <h2>{restaurant.name}</h2>
-          <p className="category">{restaurant.category}</p>
-          <p>Checkout Time: {restaurant.checkoutTime || "N/A"} mins</p>
+        <>
+          <div className="restaurant-info">
 
-          {!addingMenuItem && !editingMenuItem && (
-            <button className="add-more-btn" onClick={() => setAddingMenuItem(true)}>
-              Add Menu Item
-            </button>
-          )}
+            {restaurant.image && (
+              <img
+                src={restaurant.image}
+                alt={restaurant.name}
+              />
+            )}
 
-          {addingMenuItem && (
-            <AddMenuItemForm
-              restaurantId={restaurant.id}
-              editItem={editingMenuItem}
-              onMenuItemAdded={handleMenuItemSubmit}
-              onCancel={() => {
-                setAddingMenuItem(false);
-                setEditingMenuItem(null);
-              }}
-            />
-          )}
+            <h2>{restaurant.name}</h2>
 
-          <div className="menu-items-grid">
-            {restaurant.menuItems?.length > 0 ? (
-              restaurant.menuItems.map((item) => (
-                <MenuItemCard
-                  key={item.id || item._id}
-                  menuItem={item}
-                  isUserView={false}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                />
-              ))
-            ) : (
-              <p>No menu items yet.</p>
+            <p className="category">
+              {restaurant.category}
+            </p>
+
+            <div className="checkout-time">
+              ⏱ Checkout Time :
+              <span>
+                {" "}
+                {restaurant.checkoutTime ||
+                  "N/A"}{" "}
+                mins
+              </span>
+            </div>
+
+            {!addingMenuItem && (
+              <button
+                className="add-more-btn"
+                onClick={() => {
+                  setEditingMenuItem(
+                    null
+                  );
+
+                  setAddingMenuItem(
+                    true
+                  );
+
+                  window.scrollTo({
+                    top: 350,
+                    behavior:
+                      "smooth",
+                  });
+                }}
+              >
+                + Add Menu Item
+              </button>
             )}
           </div>
-        </div>
+
+          {/* FORM SECTION */}
+
+          {addingMenuItem && (
+            <div className="menu-form-section">
+              <AddMenuItemForm
+                restaurantId={
+                  restaurant.id ||
+                  restaurant._id
+                }
+                editItem={
+                  editingMenuItem
+                }
+                onMenuItemAdded={
+                  handleMenuItemSubmit
+                }
+                onCancel={() => {
+                  setAddingMenuItem(
+                    false
+                  );
+
+                  setEditingMenuItem(
+                    null
+                  );
+                }}
+              />
+            </div>
+          )}
+
+          {/* MENU SECTION */}
+
+          <div className="menu-section">
+            <h2 className="menu-heading">
+              Your Menu
+            </h2>
+
+            <div className="menu-items-grid">
+              {Array.isArray(
+                restaurant.menuItems
+              ) &&
+              restaurant.menuItems
+                .length > 0 ? (
+                restaurant.menuItems.map(
+                  (item) => (
+                    <MenuItemCard
+                      key={
+                        item.id ||
+                        item._id
+                      }
+                      menuItem={item}
+                      isUserView={false}
+                      onEdit={() =>
+                        handleEdit(item)
+                      }
+                      onDelete={() =>
+                        handleDelete(
+                          item.id ||
+                            item._id
+                        )
+                      }
+                    />
+                  )
+                )
+              ) : (
+                <div className="empty-menu">
+                  <h3>
+                    No menu items yet 🍽
+                  </h3>
+
+                  <p>
+                    Add your first
+                    delicious item.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </div>
   );
