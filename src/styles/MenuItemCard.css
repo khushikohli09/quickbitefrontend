@@ -1,184 +1,248 @@
-/* =========================
-   Menu Items Grid
-========================= */
-.menu-items-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 25px;
-  margin-top: 20px;
-  justify-content: center;
+/* =========================================
+   QuickBite MenuItemCard
+========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --orange: #ff6b2c;
+  --orange-dark: #ff5722;
+  --yellow: #ffc107;
+  --white: #ffffff;
+  --cream: #fffaf5;
+  --dark: #1a1209;
+  --text: #6b5b4d;
+
+  --shadow-sm: 0 6px 18px rgba(0,0,0,0.08);
+  --shadow-md: 0 14px 35px rgba(0,0,0,0.12);
+
+  --radius-lg: 24px;
+
+  --transition: all 0.3s ease;
 }
 
-/* =========================
-   Individual Menu Card
-========================= */
-.menu-card,
+/* =========================================
+   CARD
+========================================= */
+
 .menu-item-card {
-  width: 230px;
-  height: 340px; /* fixed height */
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 15px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 300px;
+
+  background: var(--white);
+
+  border-radius: var(--radius-lg);
+
+  overflow: hidden;
+
+  box-shadow: var(--shadow-sm);
+
+  transition: var(--transition);
+
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  text-align: center;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  border: 1px solid rgba(255, 107, 44, 0.08);
+
+  margin: auto;
 }
 
-.menu-card:hover,
 .menu-item-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  transform: translateY(-8px);
+
+  box-shadow: var(--shadow-md);
 }
 
-/* =========================
-   Menu Image
-========================= */
-.menu-card img,
+/* =========================================
+   IMAGE
+========================================= */
+
 .menu-item-image {
-  width: 160px;
-  height: 120px;
+  width: 100%;
+  height: 180px;
+
   object-fit: cover;
-  border-radius: 10px;
-  margin-bottom: 10px;
+
+  display: block;
+
+  transition: transform 0.4s ease;
 }
 
-/* =========================
-   Menu Name
-========================= */
-.menu-card h4,
+.menu-item-card:hover .menu-item-image {
+  transform: scale(1.05);
+}
+
+/* =========================================
+   TITLE
+========================================= */
+
 .menu-item-card h4 {
-  margin: 8px 0 4px 0;
-  font-size: 16px;
-  color: #ff416c;
-  font-weight: 600;
+  font-family: 'Playfair Display', serif;
+
+  font-size: 1.3rem;
+  font-weight: 800;
+
+  color: var(--dark);
+
+  margin: 16px 18px 10px;
 }
 
-/* =========================
-   Description & Price
-========================= */
-.menu-card p,
-.menu-item-card p {
-  margin: 3px 0;
-  font-size: 14px;
-  text-align: center;
-  color: #555;
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.menu-item-card p:nth-of-type(1) {
+  margin: 0 18px;
+
+  color: var(--text);
+
+  font-size: 0.9rem;
+
+  line-height: 1.5;
+
+  min-height: 42px;
 }
 
-.menu-card p:last-child,
-.menu-item-card p:last-child {
-  font-weight: 600;
-  color: #ff4b2b;
+/* =========================================
+   PRICE
+========================================= */
+
+.menu-item-card p:nth-of-type(2) {
+  margin: 16px 18px 0;
+
+  font-size: 1.3rem;
+  font-weight: 800;
+
+  color: var(--orange-dark);
+
+  font-family: 'Playfair Display', serif;
 }
 
-/* =========================
-   Buttons Container
-========================= */
-/* =========================
-   Buttons Container
-========================= */
-.menu-card-buttons,
+/* =========================================
+   BUTTONS
+========================================= */
+
 .menu-item-buttons {
   display: flex;
-  gap: 10px;       /* thoda zyada gap for clarity */
-  width: 100%;
-  justify-content: center;
-  margin-top: 10px; /* auto margin replaced with fixed spacing */
+
+  gap: 10px;
+
+  padding: 18px;
+
+  margin-top: auto;
 }
 
-/* =========================
-   Vendor Buttons
-========================= */
-.edit-btn,
-.delete-btn {
-  flex: 0 1 48%;   /* buttons take roughly half width each */
-  padding: 8px 0;
+.menu-item-buttons button {
+  flex: 1;
+
   border: none;
-  border-radius: 8px;
-  font-weight: 500;
+
+  border-radius: 12px;
+
+  padding: 11px;
+
   cursor: pointer;
-  color: #fff;
-  transition: 0.3s;
+
+  font-size: 0.9rem;
+  font-weight: 700;
+
+  transition: var(--transition);
+
+  font-family: 'DM Sans', sans-serif;
 }
 
-.edit-btn {
-  background: linear-gradient(90deg, #ff416c, #ff4b2b);
-}
-
-.edit-btn:hover {
-  background: linear-gradient(90deg, #ff4b2b, #ff416c);
-}
-
-.delete-btn {
-  background: linear-gradient(90deg, #dc3545, #ff4b2b);
-}
-
-.delete-btn:hover {
-  background: linear-gradient(90deg, #ff4b2b, #dc3545);
-}
-
-/* =========================
-   User Buttons (Add to Cart & Checkout)
-========================= */
-.add-cart-btn,
-.order-now-btn {
-  flex: 0 1 48%;   /* same width as vendor buttons for consistency */
-  padding: 8px 0;
-  border: none;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  color: #fff;
-  transition: 0.3s;
-}
+/* Add Cart */
 
 .add-cart-btn {
-  background: linear-gradient(90deg, #1db954, #1ed760);
+  background: #fff1ea;
+
+  color: var(--orange-dark);
 }
 
 .add-cart-btn:hover {
-  background: linear-gradient(90deg, #1ed760, #1db954);
+  background: var(--orange-dark);
+
+  color: white;
+
+  transform: translateY(-2px);
 }
 
+/* Checkout */
+
 .order-now-btn {
-  background: linear-gradient(90deg, #ff416c, #ff4b2b);
+  background: linear-gradient(
+    135deg,
+    var(--orange),
+    var(--orange-dark)
+  );
+
+  color: white;
 }
 
 .order-now-btn:hover {
-  background: linear-gradient(90deg, #ff4b2b, #ff416c);
+  transform: translateY(-2px);
 }
 
-/* =========================
-   Responsive Design
-========================= */
+/* Vendor */
+
+.edit-btn {
+  background: #fff1ea;
+  color: var(--orange-dark);
+}
+
+.edit-btn:hover {
+  background: var(--orange-dark);
+  color: white;
+}
+
+.delete-btn {
+  background: #ffe8e8;
+  color: #e53935;
+}
+
+.delete-btn:hover {
+  background: #e53935;
+  color: white;
+}
+
+/* =========================================
+   MOBILE
+========================================= */
+
 @media (max-width: 768px) {
-  .menu-card,
+
   .menu-item-card {
-    width: 90%;
-    height: auto;
+    max-width: 260px;
   }
 
-  .menu-card img,
   .menu-item-image {
-    width: 100%;
-    height: 160px;
+    height: 170px;
   }
 
-  .menu-card-buttons button,
-  .menu-item-buttons button,
-  .add-cart-btn,
-  .order-now-btn {
-    flex: 1 1 100%;  /* stack vertically on mobile */
-    font-size: 14px;
-    padding: 10px 0;
-  }
-
-  .menu-card-buttons,
   .menu-item-buttons {
     flex-direction: column;
-    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+
+  .menu-item-card {
+    max-width: 100%;
+  }
+
+  .menu-item-image {
+    height: 180px;
+  }
+
+  .menu-item-card h4 {
+    font-size: 1.15rem;
+  }
+
+  .menu-item-card p:nth-of-type(1) {
+    font-size: 0.85rem;
+  }
+
+  .menu-item-buttons button {
+    font-size: 0.85rem;
   }
 }
