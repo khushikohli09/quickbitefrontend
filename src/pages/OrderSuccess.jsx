@@ -114,7 +114,11 @@ export default function OrderSuccess() {
 
       <h2 className="status-text">Current Status: {orderStatus}</h2>
 
-      {notification && <div className="ready-notification">{notification}</div>}
+      {notification && (
+        <div className="ready-notification">
+          {notification}
+        </div>
+      )}
 
       <button onClick={() => navigate("/")} className="home-btn">
         🏠 Back to Home
