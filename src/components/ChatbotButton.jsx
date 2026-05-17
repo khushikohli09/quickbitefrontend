@@ -8,6 +8,9 @@ const ChatbotButton = () => {
   const [chat, setChat] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // ✅ FIX: API URL from environment variable
+  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
+
   const sendMessage = async () => {
     if (!message.trim()) return;
 
@@ -21,8 +24,9 @@ const ChatbotButton = () => {
         sessionStorage.getItem("token") ||
         localStorage.getItem("token");
 
+      // ✅ FIX: Using environment variable
       const res = await axios.post(
-        "http://localhost:5000/api/chat",
+        `${API_URL}/api/chat`,
         { message },
         {
           headers: {
@@ -38,6 +42,7 @@ const ChatbotButton = () => {
 
       setChat((prev) => [...prev, botMsg]);
     } catch (err) {
+      console.error("Chatbot error:", err);
       setChat((prev) => [
         ...prev,
         { sender: "bot", text: "Server error 😢" },
