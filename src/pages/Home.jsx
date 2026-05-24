@@ -1,495 +1,522 @@
-return (
-  <div className="home-container">
+import React, { useState, useEffect } from "react";
+import axios from "axios";
+import { socket } from "../Socket";
+import { useNavigate } from "react-router-dom";
+import LoginModal from "./Login";
+import SignupModal from "./Signup";
+import ChatbotButton from "../components/ChatbotButton";
+import "../styles/Home.css";
 
-    {/* HERO */}
-    <div className="hero">
+const Home = () => {
 
-      <div className="hero-content">
+  const navigate = useNavigate();
 
-        <h1>
-          Discover <span>Top Rated</span> Food 🍽️
-        </h1>
+  const [showLogin, setShowLogin] = useState(false);
+  const [showSignup, setShowSignup] = useState(false);
 
-        <p>
-          Fast delivery • Best deals near you
-        </p>
+  const [restaurants, setRestaurants] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-        <button
-          className="explore-btn"
-          onClick={() => navigate("/restaurants")}
-        >
-          Explore Restaurants
-        </button>
+  // AI STATES
+  const [budget, setBudget] = useState("");
+  const [mood, setMood] = useState("");
+  const [recommendations, setRecommendations] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
 
-      </div>
+  // API URL
+  const API_URL =
+    process.env.REACT_APP_BACKEND_URL ||
+    "http://localhost:5000";
 
-    </div>
+  // FETCH FEATURED RESTAURANTS
+  const fetchFeaturedRestaurants = async () => {
+    try {
 
-    {/* AI RECOMMENDATION SECTION */}
+      const res = await axios.get(
+        `${API_URL}/api/admin/restaurants`
+      );
 
-    <section className="ai-section">
+      const featured =
+        res.data.filter(
+          (r) => r.isFeatured
+        );
 
-      <div className="section-header">
-        <h2>🤖 AI Recommend For You</h2>
-      </div>
+      setRestaurants(featured);
 
-      <div className="ai-input-box">
+    } catch (err) {
 
-        <input
-          className="ai-input"
-          placeholder="Enter budget (e.g. 150)"
-          value={budget}
-          onChange={(e) =>
-            setBudget(e.target.value)
-          }
-        />
+      console.error(err);
 
-        <input
-          className="ai-input"
-          placeholder="Mood (spicy / sweet / light)"
-          value={mood}
-          onChange={(e) =>
-            setMood(e.target.value)
-          }
-        />
+      setError(
+        "Failed to load featured restaurants"
+      );
 
-        <button
-          className="ai-btn"
-          onClick={getRecommendations}
-        >
-          {aiLoading
-            ? "Thinking..."
-            : "Get Recommendations"}
-        </button>
+    }
+  };
 
-      </div>
+  // SOCKET
+  useEffect(() => {
 
-      <div className="restaurant-cards">
+    setLoading(true);
 
-        {!aiLoading &&
-          recommendations.length === 0 && (
-            <p
-              style={{
-                textAlign: "center",
-                marginTop: "10px",
-              }}
-            >
-              🍽️ Enter your mood &
-              budget to get AI
-              recommendations
-            </p>
-          )}
+    fetchFeaturedRestaurants()
+      .finally(() =>
+        setLoading(false)
+      );
 
-        {aiLoading && (
-          <p style={{ textAlign: "center" }}>
-            🍳 Cooking your
-            recommendations...
-          </p>
-        )}
+    if (!socket.connected) {
+      socket.connect();
+    }
 
-        {recommendations.map(
-          (item, i) => (
-            <div
-              key={i}
-              className="restaurant-card"
-            >
+    socket.on(
+      "featured_restaurant_updated",
+      fetchFeaturedRestaurants
+    );
 
-              <div className="card-img-wrapper">
+    socket.on(
+      "restaurant_deleted",
+      (data) => {
 
-                {item.image ? (
-                  <img
-                    src={getImageUrl(
-                      item.image
-                    )}
-                    alt={item.name}
-                  />
-                ) : (
-                  <span>🍽️</span>
-                )}
-
-              </div>
-
-              <div className="card-body">
-
-                <h3>{item.name}</h3>
-
-                <p className="category-tag">
-                  {item.restaurant}
-                </p>
-
-                <p>₹{item.price}</p>
-
-                {item.reason && (
-                  <small
-                    style={{
-                      color: "#888",
-                    }}
-                  >
-                    {item.reason}
-                  </small>
-                )}
-
-                <button
-                  onClick={() =>
-                    navigate(
-                      "/restaurants"
-                    )
-                  }
-                >
-                  Order Now
-                </button>
-
-              </div>
-
-            </div>
+        setRestaurants((prev) =>
+          prev.filter(
+            (r) =>
+              r.id !==
+              data.restaurantId
           )
-        )}
+        );
 
-      </div>
+      }
+    );
 
-    </section>
+    return () => {
 
-    {/* WHY SECTION */}
+      socket.off(
+        "featured_restaurant_updated"
+      );
 
-    <section className="why-section">
+      socket.off(
+        "restaurant_deleted"
+      );
 
-      <div className="section-header">
-        <h2>
-          Why <em>QuickBite?</em>
-        </h2>
-      </div>
+    };
 
-      <div className="why-grid">
+  }, []);
 
-        {whyUs.map((w, i) => (
-          <div
-            key={i}
-            className="why-card"
-          >
+  // IMAGE HELPER
+  const getImageUrl = (img) => {
 
-            <div className="why-icon">
-              {w.icon}
-            </div>
+    if (!img) return null;
 
-            <h4>{w.title}</h4>
+    if (img.startsWith("http")) {
+      return img;
+    }
 
-            <p>{w.desc}</p>
+    return `${API_URL}/uploads/${img}`;
 
-          </div>
-        ))}
+  };
 
-      </div>
+  // AI RECOMMENDATION
+  const getRecommendations =
+    async () => {
 
-    </section>
+      try {
 
-    {/* PROMO BANNER */}
-
-    <div className="promo-banner">
-
-      <div className="promo-text">
-
-        <h3>
-          🎉 New User? Get 50% Off
-          Your First Order
-        </h3>
-
-        <p>
-          Sign up today and enjoy
-          your favourite food at
-          half the price!
-        </p>
-
-      </div>
-
-      <button
-        className="promo-cta"
-        onClick={() =>
-          navigate("/signup")
+        if (!budget && !mood) {
+          return;
         }
-      >
-        Claim Offer
-      </button>
 
-    </div>
+        setAiLoading(true);
 
-    {/* OFFERS */}
+        const res =
+          await axios.post(
+            `${API_URL}/api/chat/recommend`,
+            {
+              budget: budget
+                ? Number(budget)
+                : null,
 
-    <section className="offers-section">
+              mood,
+            }
+          );
 
-      <div className="section-header">
-        <h2>
-          Special <em>Offers</em>
-        </h2>
-      </div>
+        setRecommendations(
+          res.data.recommendations ||
+            []
+        );
 
-      <div className="offers-list">
+      } catch (err) {
 
-        {offers.map((offer) => (
-          <div
-            key={offer.id}
-            className="offer-card"
-          >
+        console.error(err);
 
-            <h3>{offer.title}</h3>
+        setRecommendations([]);
 
-            <p>
-              Use Code:{" "}
-              <strong>
-                {offer.code}
-              </strong>
-            </p>
+      } finally {
 
-          </div>
-        ))}
+        setAiLoading(false);
 
-      </div>
+      }
 
-    </section>
+    };
 
-    {/* HOW IT WORKS */}
+  if (loading) {
+    return (
+      <p>
+        Loading featured restaurants...
+      </p>
+    );
+  }
 
-    <section className="how-section">
+  if (error) {
+    return <p>{error}</p>;
+  }
 
-      <div className="section-header">
-        <h2>
-          How It <em>Works</em>
-        </h2>
-      </div>
+  // OFFERS
+  const offers = [
+    {
+      id: 1,
+      title:
+        "Flat 50% Off on First Order",
+      code: "WELCOME50",
+    },
 
-      <div className="steps-grid">
+    {
+      id: 2,
+      title:
+        "Free Delivery Above ₹299",
+      code: "FREEDLVY",
+    },
 
-        {steps.map((s, i) => (
-          <div
-            key={i}
-            className="step-card"
-          >
+    {
+      id: 3,
+      title:
+        "Buy 1 Get 1 Free on Pizza",
+      code: "PIZZA1FREE",
+    },
+  ];
 
-            <div className="step-number">
-              {i + 1}
-            </div>
+  // WHY US
+  const whyUs = [
+    {
+      icon: "⚡",
+      title: "Lightning Fast",
+      desc:
+        "Average delivery in under 30 minutes, guaranteed fresh.",
+    },
 
-            <div className="step-icon">
-              {s.icon}
-            </div>
+    {
+      icon: "🍽️",
+      title: "500+ Restaurants",
+      desc:
+        "From local dhabas to premium dining — all in one place.",
+    },
 
-            <h4>{s.title}</h4>
+    {
+      icon: "💸",
+      title: "Best Prices",
+      desc:
+        "Daily deals and exclusive offers save you money every order.",
+    },
 
-            <p>{s.desc}</p>
+    {
+      icon: "🛡️",
+      title: "Safe & Hygienic",
+      desc:
+        "Every partner restaurant is quality-checked and certified.",
+    },
+  ];
 
-          </div>
-        ))}
+  // STEPS
+  const steps = [
+    {
+      icon: "📍",
+      title: "Choose Location",
+      desc:
+        "Set your delivery address to see restaurants near you.",
+    },
 
-      </div>
+    {
+      icon: "🍽️",
+      title: "Pick a Restaurant",
+      desc:
+        "Browse menus from top-rated places in your area.",
+    },
 
-    </section>
+    {
+      icon: "🛒",
+      title: "Add to Cart",
+      desc:
+        "Select your favourite dishes and customise your order.",
+    },
 
-    {/* TESTIMONIALS */}
+    {
+      icon: "🚀",
+      title: "Fast Delivery",
+      desc:
+        "Sit back — your food arrives hot at your door.",
+    },
+  ];
 
-    <section className="testimonials-section">
+  // TESTIMONIALS
+  const testimonials = [
+    {
+      name: "Anika Sharma",
+      city: "Mumbai",
+      quote:
+        "Quickest delivery I've ever had. Food arrived piping hot in under 30 minutes!",
+      stars: 5,
+    },
 
-      <div className="section-header">
-        <h2>
-          What Our{" "}
-          <em>Customers</em> Say
-        </h2>
-      </div>
+    {
+      name: "Ravi Mehta",
+      city: "Bangalore",
+      quote:
+        "The variety of restaurants is incredible. Found my new favourite biryani spot here.",
+      stars: 5,
+    },
 
-      <div className="testimonials-grid">
+    {
+      name: "Priya K.",
+      city: "Delhi",
+      quote:
+        "Super easy to use app. The offers save me money every single week.",
+      stars: 4,
+    },
+  ];
 
-        {testimonials.map((t, i) => (
-          <div
-            key={i}
-            className="testimonial-card"
-          >
+  return (
 
-            <div className="stars">
-              {"★".repeat(t.stars)}
-              {"☆".repeat(
-                5 - t.stars
-              )}
-            </div>
+    <div className="home-container">
 
-            <blockquote>
-              "{t.quote}"
-            </blockquote>
+      {/* HERO */}
+      <div className="hero">
 
-            <div className="reviewer">
+        <div className="hero-content">
 
-              <div className="reviewer-avatar">
-                {t.name.charAt(0)}
-              </div>
-
-              <div className="reviewer-info">
-
-                <strong>
-                  {t.name}
-                </strong>
-
-                <span>{t.city}</span>
-
-              </div>
-
-            </div>
-
-          </div>
-        ))}
-
-      </div>
-
-    </section>
-
-    {/* APP DOWNLOAD */}
-
-    <div className="app-banner">
-
-      <div className="app-banner-text">
-
-        <h3>
-          📱 Get the QuickBite App
-        </h3>
-
-        <p>
-          Exclusive app-only deals.
-          Track orders in real-time.
-          Reorder in one tap.
-        </p>
-
-      </div>
-
-      <div className="app-badges">
-
-        <div className="app-badge">
-          <span className="badge-icon">
-            🍎
-          </span>
-          App Store
-        </div>
-
-        <div className="app-badge">
-          <span className="badge-icon">
-            🤖
-          </span>
-          Google Play
-        </div>
-
-      </div>
-
-    </div>
-
-    {/* MODALS */}
-
-    {showSignup && (
-      <SignupModal
-        onClose={() =>
-          setShowSignup(false)
-        }
-      />
-    )}
-
-    {/* CHATBOT */}
-
-    <ChatbotButton />
-
-    {/* FOOTER */}
-
-    <footer className="footer">
-
-      <div className="footer-container">
-
-        <div className="footer-left">
-
-          <h2>
-            QuickBite 🍔
-          </h2>
+          <h1>
+            Discover{" "}
+            <span>
+              Top Rated
+            </span>{" "}
+            Food 🍽️
+          </h1>
 
           <p>
-            Delicious food delivered
-            fast to your doorstep.
-            Quality meals, every time.
+            Fast delivery • Best deals
+            near you
           </p>
 
-          <div className="footer-social">
-
-            <div className="social-dot">
-              𝕏
-            </div>
-
-            <div className="social-dot">
-              f
-            </div>
-
-            <div className="social-dot">
-              in
-            </div>
-
-            <div className="social-dot">
-              📸
-            </div>
-
-          </div>
-
-        </div>
-
-        <div className="footer-links">
-
-          <h4>Quick Links</h4>
-
-          <p
-            onClick={() =>
-              navigate("/")
-            }
-          >
-            Home
-          </p>
-
-          <p
+          <button
+            className="explore-btn"
             onClick={() =>
               navigate(
                 "/restaurants"
               )
             }
           >
-            Restaurants
-          </p>
-
-          <p>Orders</p>
-
-          <p>About Us</p>
-
-        </div>
-
-        <div className="footer-contact">
-
-          <h4>Contact</h4>
-
-          <p>
-            📞 +91 98765 43210
-          </p>
-
-          <p>
-            📧 support@quickbite.com
-          </p>
-
-          <p>
-            📍 India
-          </p>
+            Explore Restaurants
+          </button>
 
         </div>
 
       </div>
 
-      <div className="footer-bottom">
+      {/* AI SECTION */}
+      <section className="ai-section">
 
-        <p>
-          ©{" "}
-          {new Date().getFullYear()}{" "}
-          QuickBite. All rights
-          reserved.
-        </p>
+        <div className="section-header">
 
-      </div>
+          <h2>
+            🤖 AI Recommend For You
+          </h2>
 
-    </footer>
+        </div>
 
-  </div>
-);
+        <div className="ai-input-box">
+
+          <input
+            className="ai-input"
+            placeholder="Enter budget (e.g. 150)"
+            value={budget}
+            onChange={(e) =>
+              setBudget(
+                e.target.value
+              )
+            }
+          />
+
+          <input
+            className="ai-input"
+            placeholder="Mood (spicy / sweet / light)"
+            value={mood}
+            onChange={(e) =>
+              setMood(
+                e.target.value
+              )
+            }
+          />
+
+          <button
+            className="ai-btn"
+            onClick={
+              getRecommendations
+            }
+          >
+            {aiLoading
+              ? "Thinking..."
+              : "Get Recommendations"}
+          </button>
+
+        </div>
+
+        <div className="restaurant-cards">
+
+          {!aiLoading &&
+            recommendations.length ===
+              0 && (
+              <p
+                style={{
+                  textAlign:
+                    "center",
+                  marginTop:
+                    "10px",
+                }}
+              >
+                🍽️ Enter your mood &
+                budget to get AI
+                recommendations
+              </p>
+            )}
+
+          {aiLoading && (
+            <p
+              style={{
+                textAlign:
+                  "center",
+              }}
+            >
+              🍳 Cooking your
+              recommendations...
+            </p>
+          )}
+
+          {recommendations.map(
+            (item, i) => (
+
+              <div
+                key={i}
+                className="restaurant-card"
+              >
+
+                <div className="card-img-wrapper">
+
+                  {item.image ? (
+                    <img
+                      src={getImageUrl(
+                        item.image
+                      )}
+                      alt={item.name}
+                    />
+                  ) : (
+                    <span>
+                      🍽️
+                    </span>
+                  )}
+
+                </div>
+
+                <div className="card-body">
+
+                  <h3>
+                    {item.name}
+                  </h3>
+
+                  <p className="category-tag">
+                    {item.restaurant}
+                  </p>
+
+                  <p>
+                    ₹{item.price}
+                  </p>
+
+                  {item.reason && (
+                    <small
+                      style={{
+                        color:
+                          "#888",
+                      }}
+                    >
+                      {item.reason}
+                    </small>
+                  )}
+
+                  <button
+                    onClick={() =>
+                      navigate(
+                        "/restaurants"
+                      )
+                    }
+                  >
+                    Order Now
+                  </button>
+
+                </div>
+
+              </div>
+
+            )
+          )}
+
+        </div>
+
+      </section>
+
+      {/* WHY SECTION */}
+      <section className="why-section">
+
+        <div className="section-header">
+
+          <h2>
+            Why{" "}
+            <em>
+              QuickBite?
+            </em>
+          </h2>
+
+        </div>
+
+        <div className="why-grid">
+
+          {whyUs.map((w, i) => (
+
+            <div
+              key={i}
+              className="why-card"
+            >
+
+              <div className="why-icon">
+                {w.icon}
+              </div>
+
+              <h4>{w.title}</h4>
+
+              <p>{w.desc}</p>
+
+            </div>
+
+          ))}
+
+        </div>
+
+      </section>
+
+      {/* CHATBOT */}
+      <ChatbotButton />
+
+    </div>
+
+  );
+
+};
+
+export default Home;
