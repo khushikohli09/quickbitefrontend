@@ -1,6 +1,7 @@
 // src/App.js
 
 import React from "react";
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,42 +9,55 @@ import {
   Navigate,
 } from "react-router-dom";
 
-// Components
+// COMPONENTS
 import Navbar from "./components/Navbar";
 
-// Pages
+// PAGES
 import Home from "./pages/Home";
 import LoginModel from "./pages/LoginModel";
 import SignupModel from "./pages/SignupModel";
 import Restaurant from "./pages/Restaurant";
 import AllRestaurants from "./pages/AllRestaurants";
+
 import VendorDashboard from "./pages/VendorDashboard";
 import VendorAnalytics from "./pages/VendorAnalytics";
+
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMembershipPlans from "./pages/AdminMembershipPlans";
 import AdminCoupons from "./pages/AdminCoupons";
+
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
-import PaymentPage from "./pages/PaymentPage";
+
+// ✅ PAYMENT IMPORT
+import Payment from "./pages/Payment";
+
 import OrderSuccess from "./pages/OrderSuccess";
+
 import UserOrders from "./pages/UserOrders";
+
 import AboutUs from "./pages/AboutUs";
 import Profile from "./pages/Profile";
 import ContactUs from "./pages/ContactUs";
+
 import MembershipPage from "./pages/MembershipPage";
+
 import Chatbot from "./pages/Chatbot";
 
-// Protected Route
+// PROTECTED ROUTE
 import ProtectedRoute from "./routes/ProtectedRoute";
 
 function App() {
   return (
     <Router>
+
       <Navbar />
 
       <Routes>
 
-        {/* ---------------- PUBLIC ROUTES ---------------- */}
+        {/* =======================================
+            PUBLIC ROUTES
+        ======================================= */}
 
         <Route
           path="/"
@@ -52,7 +66,9 @@ function App() {
 
         <Route
           path="/restaurants"
-          element={<AllRestaurants />}
+          element={
+            <AllRestaurants />
+          }
         />
 
         <Route
@@ -80,14 +96,18 @@ function App() {
           element={<Checkout />}
         />
 
+        {/* ✅ PAYMENT ROUTE */}
+
         <Route
           path="/payment"
-          element={<PaymentPage />}
+          element={<Payment />}
         />
 
         <Route
           path="/order-success"
-          element={<OrderSuccess />}
+          element={
+            <OrderSuccess />
+          }
         />
 
         <Route
@@ -110,39 +130,51 @@ function App() {
           element={<Chatbot />}
         />
 
-        {/* ---------------- USER MEMBERSHIP ---------------- */}
+        {/* =======================================
+            USER MEMBERSHIP
+        ======================================= */}
 
         <Route
           path="/membership"
           element={
             <ProtectedRoute
-              allowedRoles={["user"]}
+              allowedRoles={[
+                "user",
+              ]}
             >
               <MembershipPage />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- USER ORDERS ---------------- */}
+        {/* =======================================
+            USER ORDERS
+        ======================================= */}
 
         <Route
           path="/my-orders"
           element={
             <ProtectedRoute
-              allowedRoles={["user"]}
+              allowedRoles={[
+                "user",
+              ]}
             >
               <UserOrders />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- VENDOR ---------------- */}
+        {/* =======================================
+            VENDOR
+        ======================================= */}
 
         <Route
           path="/vendor/dashboard"
           element={
             <ProtectedRoute
-              allowedRoles={["vendor"]}
+              allowedRoles={[
+                "vendor",
+              ]}
             >
               <VendorDashboard />
             </ProtectedRoute>
@@ -153,53 +185,69 @@ function App() {
           path="/vendor-analytics"
           element={
             <ProtectedRoute
-              allowedRoles={["vendor"]}
+              allowedRoles={[
+                "vendor",
+              ]}
             >
               <VendorAnalytics />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- ADMIN DASHBOARD ---------------- */}
+        {/* =======================================
+            ADMIN DASHBOARD
+        ======================================= */}
 
         <Route
           path="/admin/dashboard"
           element={
             <ProtectedRoute
-              allowedRoles={["admin"]}
+              allowedRoles={[
+                "admin",
+              ]}
             >
               <AdminDashboard />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- ADMIN MEMBERSHIP ---------------- */}
+        {/* =======================================
+            ADMIN MEMBERSHIP
+        ======================================= */}
 
         <Route
           path="/admin/membership"
           element={
             <ProtectedRoute
-              allowedRoles={["admin"]}
+              allowedRoles={[
+                "admin",
+              ]}
             >
               <AdminMembershipPlans />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- ADMIN COUPONS ---------------- */}
+        {/* =======================================
+            ADMIN COUPONS
+        ======================================= */}
 
         <Route
           path="/admin/coupons"
           element={
             <ProtectedRoute
-              allowedRoles={["admin"]}
+              allowedRoles={[
+                "admin",
+              ]}
             >
               <AdminCoupons />
             </ProtectedRoute>
           }
         />
 
-        {/* ---------------- ADMIN REDIRECT ---------------- */}
+        {/* =======================================
+            ADMIN REDIRECT
+        ======================================= */}
 
         <Route
           path="/admin"
