@@ -18,12 +18,13 @@ import SignupModel from "./pages/SignupModel";
 import Restaurant from "./pages/Restaurant";
 import AllRestaurants from "./pages/AllRestaurants";
 import VendorDashboard from "./pages/VendorDashboard";
+import VendorAnalytics from "./pages/VendorAnalytics";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMembershipPlans from "./pages/AdminMembershipPlans";
-import AdminCoupons from "./pages/AdminCoupons"; // ✅ NEW
+import AdminCoupons from "./pages/AdminCoupons";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
-import Payment from "./pages/PaymentPage";
+import PaymentPage from "./pages/PaymentPage";
 import OrderSuccess from "./pages/OrderSuccess";
 import UserOrders from "./pages/UserOrders";
 import AboutUs from "./pages/AboutUs";
@@ -43,81 +44,163 @@ function App() {
       <Routes>
 
         {/* ---------------- PUBLIC ROUTES ---------------- */}
-        <Route path="/" element={<Home />} />
-        <Route path="/restaurants" element={<AllRestaurants />} />
-        <Route path="/restaurants/:id" element={<Restaurant />} />
-        <Route path="/login" element={<LoginModel />} />
-        <Route path="/signup" element={<SignupModel />} />
-        <Route path="/cart" element={<Cart />} />
-        <Route path="/checkout" element={<Checkout />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/order-success" element={<OrderSuccess />} />
-        <Route path="/about" element={<AboutUs />} />
-        <Route path="/contact" element={<ContactUs />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/chatbot" element={<Chatbot />} />
+
+        <Route
+          path="/"
+          element={<Home />}
+        />
+
+        <Route
+          path="/restaurants"
+          element={<AllRestaurants />}
+        />
+
+        <Route
+          path="/restaurants/:id"
+          element={<Restaurant />}
+        />
+
+        <Route
+          path="/login"
+          element={<LoginModel />}
+        />
+
+        <Route
+          path="/signup"
+          element={<SignupModel />}
+        />
+
+        <Route
+          path="/cart"
+          element={<Cart />}
+        />
+
+        <Route
+          path="/checkout"
+          element={<Checkout />}
+        />
+
+        <Route
+          path="/payment"
+          element={<PaymentPage />}
+        />
+
+        <Route
+          path="/order-success"
+          element={<OrderSuccess />}
+        />
+
+        <Route
+          path="/about"
+          element={<AboutUs />}
+        />
+
+        <Route
+          path="/contact"
+          element={<ContactUs />}
+        />
+
+        <Route
+          path="/profile"
+          element={<Profile />}
+        />
+
+        <Route
+          path="/chatbot"
+          element={<Chatbot />}
+        />
 
         {/* ---------------- USER MEMBERSHIP ---------------- */}
+
         <Route
           path="/membership"
           element={
-            <ProtectedRoute allowedRoles={["user"]}>
+            <ProtectedRoute
+              allowedRoles={["user"]}
+            >
               <MembershipPage />
             </ProtectedRoute>
           }
         />
 
         {/* ---------------- USER ORDERS ---------------- */}
+
         <Route
           path="/my-orders"
           element={
-            <ProtectedRoute allowedRoles={["user"]}>
+            <ProtectedRoute
+              allowedRoles={["user"]}
+            >
               <UserOrders />
             </ProtectedRoute>
           }
         />
 
         {/* ---------------- VENDOR ---------------- */}
+
         <Route
           path="/vendor/dashboard"
           element={
-            <ProtectedRoute allowedRoles={["vendor"]}>
+            <ProtectedRoute
+              allowedRoles={["vendor"]}
+            >
               <VendorDashboard />
             </ProtectedRoute>
           }
         />
 
+        <Route
+          path="/vendor-analytics"
+          element={
+            <ProtectedRoute
+              allowedRoles={["vendor"]}
+            >
+              <VendorAnalytics />
+            </ProtectedRoute>
+          }
+        />
+
         {/* ---------------- ADMIN DASHBOARD ---------------- */}
+
         <Route
           path="/admin/dashboard"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute
+              allowedRoles={["admin"]}
+            >
               <AdminDashboard />
             </ProtectedRoute>
           }
         />
 
         {/* ---------------- ADMIN MEMBERSHIP ---------------- */}
+
         <Route
           path="/admin/membership"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute
+              allowedRoles={["admin"]}
+            >
               <AdminMembershipPlans />
             </ProtectedRoute>
           }
         />
 
         {/* ---------------- ADMIN COUPONS ---------------- */}
+
         <Route
           path="/admin/coupons"
           element={
-            <ProtectedRoute allowedRoles={["admin"]}>
+            <ProtectedRoute
+              allowedRoles={["admin"]}
+            >
               <AdminCoupons />
             </ProtectedRoute>
           }
         />
 
         {/* ---------------- ADMIN REDIRECT ---------------- */}
+
         <Route
           path="/admin"
           element={
