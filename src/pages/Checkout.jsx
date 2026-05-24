@@ -159,45 +159,52 @@ export default function Checkout() {
     subtotal + deliveryCharge - membershipDiscount - couponDiscount;
 
   // ---------------- PLACE ORDER ----------------
-  const placeOrder = async () => {
+const placeOrder =
+  async () => {
     try {
       setIsLoading(true);
 
-      const orderData = {
-        userId: user.id,
-        restaurantId: items[0]?.restaurantId,
-        items: items.map((i) => ({
-          menuItemId: i.id,
-          quantity: i.quantity,
-          price: i.price,
-        })),
-        deliveryInfo,
-        paymentMethod,
-        total: totalAmount,
-      };
+      navigate("/payment", {
+        state: {
+          orderData: {
+            userId: user.id,
 
-      const res = await api.post("/orders/confirm", orderData, {
-        headers: {
-          Authorization: `Bearer ${
-            localStorage.getItem("token") ||
-            sessionStorage.getItem("token")
-          }`,
+            restaurantId:
+              items[0]?.restaurantId,
+
+            items: items.map(
+              (i) => ({
+                id: i.id,
+                name: i.name,
+                quantity:
+                  i.quantity,
+                price: i.price,
+                restaurantId:
+                  i.restaurantId,
+
+                menuItemId:
+                  i.id,
+              })
+            ),
+
+            deliveryInfo,
+
+            paymentMethod,
+
+            total:
+              totalAmount.toFixed(
+                2
+              ),
+          },
         },
       });
 
-      const orderId = res.data.orderId || res.data.order?.id;
-
-      socket.emit("place-order", {
-        orderId,
-        restaurantId: items[0]?.restaurantId,
-        items,
-        userId: user.id,
-        total: totalAmount,
-      });
-
-      navigate("/order-success", { state: { orderId } });
     } catch (err) {
-      setStatus("Order failed");
+      console.error(err);
+
+      setStatus(
+        "Payment redirect failed"
+      );
     } finally {
       setIsLoading(false);
     }
