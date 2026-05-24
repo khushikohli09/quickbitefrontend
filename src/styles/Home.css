@@ -1141,3 +1141,71 @@ body {
     gap: 1.5rem;
   }
 }
+.ai-section {
+  background: var(--card-bg);
+  padding: 4.5rem 5%;
+  border-bottom: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+}
+
+/* same heading style like WHY section */
+.ai-section .section-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 2rem;
+  text-align: left;
+}
+
+/* INPUT BOX CENTERED LIKE CLEAN UI */
+.ai-input-box {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+/* INPUT STYLE (MATCH CARD DESIGN) */
+.ai-input {
+  padding: 0.9rem 1.2rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--cream);
+  width: 220px;
+  outline: none;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.ai-input:focus {
+  border-color: var(--orange);
+  box-shadow: var(--shadow-md);
+}
+
+/* BUTTON SAME BRAND STYLE */
+.ai-btn {
+  padding: 0.9rem 1.8rem;
+  border-radius: 100px;
+  border: none;
+  background: linear-gradient(135deg, var(--orange), var(--orange-light));
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 10px 25px rgba(255,87,34,0.25);
+}
+
+.ai-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 35px rgba(255,87,34,0.35);
+}
+
+/* AI OUTPUT GRID SAME AS WHY CARDS */
+.ai-section .restaurant-cards {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1.5rem;
+}
