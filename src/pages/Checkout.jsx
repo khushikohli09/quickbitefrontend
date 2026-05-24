@@ -159,56 +159,202 @@ export default function Checkout() {
     subtotal + deliveryCharge - membershipDiscount - couponDiscount;
 
   // ---------------- PLACE ORDER ----------------
-const placeOrder =
-  async () => {
-    try {
-      setIsLoading(true);
+// ---------------- PLACE ORDER WITH RAZORPAY ----------------
 
-      navigate("/payment", {
-        state: {
-          orderData: {
-            userId: user.id,
+const placeOrder = async () => {
+  try {
 
-            restaurantId:
-              items[0]?.restaurantId,
+    setIsLoading(true);
 
-            items: items.map(
-              (i) => ({
-                id: i.id,
-                name: i.name,
-                quantity:
-                  i.quantity,
-                price: i.price,
-                restaurantId:
-                  i.restaurantId,
+    // ---------------- CREATE RAZORPAY ORDER ----------------
 
-                menuItemId:
-                  i.id,
-              })
-            ),
-
-            deliveryInfo,
-
-            paymentMethod,
-
-            total:
-              totalAmount.toFixed(
-                2
-              ),
-          },
+    const res = await api.post(
+      "/payment/orders",
+      {
+        amount: Number(
+          totalAmount.toFixed(2)
+        ),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${
+            localStorage.getItem(
+              "token"
+            ) ||
+            sessionStorage.getItem(
+              "token"
+            )
+          }`,
         },
-      });
+      }
+    );
 
-    } catch (err) {
-      console.error(err);
+    const razorpayOrder =
+      res.data;
 
-      setStatus(
-        "Payment redirect failed"
+    // ---------------- OPTIONS ----------------
+
+    const options = {
+      key:
+        process.env
+          .REACT_APP_RAZORPAY_KEY_ID,
+
+      amount:
+        razorpayOrder.amount,
+
+      currency: "INR",
+
+      name: "QuickBite",
+
+      description:
+        "Food Order Payment",
+
+      order_id:
+        razorpayOrder.id,
+
+      handler:
+        async function (
+          response
+        ) {
+
+          try {
+
+            // ✅ SAVE ORDER AFTER PAYMENT SUCCESS
+
+            const orderData = {
+              userId: user.id,
+
+              restaurantId:
+                items[0]
+                  ?.restaurantId,
+
+              items: items.map(
+                (i) => ({
+                  menuItemId:
+                    i.id,
+
+                  quantity:
+                    i.quantity,
+
+                  price:
+                    i.price,
+                })
+              ),
+
+              deliveryInfo,
+
+              paymentMethod:
+                "Online",
+
+              total:
+                totalAmount.toFixed(
+                  2
+                ),
+
+              razorpayPaymentId:
+                response.razorpay_payment_id,
+            };
+
+            const orderRes =
+              await api.post(
+                "/orders/confirm",
+                orderData,
+                {
+                  headers: {
+                    Authorization: `Bearer ${
+                      localStorage.getItem(
+                        "token"
+                      ) ||
+                      sessionStorage.getItem(
+                        "token"
+                      )
+                    }`,
+                  },
+                }
+              );
+
+            const orderId =
+              orderRes.data.order
+                ?.id;
+
+            // SOCKET
+
+            socket.emit(
+              "place-order",
+              {
+                orderId,
+
+                restaurantId:
+                  items[0]
+                    ?.restaurantId,
+
+                items,
+
+                userId:
+                  user.id,
+
+                total:
+                  totalAmount,
+              }
+            );
+
+            navigate(
+              "/order-success",
+              {
+                state: {
+                  orderId,
+                },
+              }
+            );
+
+          } catch (err) {
+
+            console.log(err);
+
+            alert(
+              "Order save failed"
+            );
+          }
+        },
+
+      prefill: {
+        name:
+          deliveryInfo.name,
+
+        contact:
+          deliveryInfo.phone,
+
+        email:
+          user?.email,
+      },
+
+      theme: {
+        color: "#ff6b2c",
+      },
+    };
+
+    // ---------------- OPEN RAZORPAY ----------------
+
+    const razor =
+      new window.Razorpay(
+        options
       );
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+    razor.open();
+
+  } catch (err) {
+
+    console.error(err);
+
+    setStatus(
+      "Payment failed"
+    );
+
+  } finally {
+
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="checkout-container">
