@@ -1188,3 +1188,20 @@
     gap: 22px;
   }
 }
+.analytics-btn {
+  margin-top: 12px;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 10px;
+  background: #ff6b35;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.analytics-btn:hover {
+  background: #e85a2a;
+  transform: translateY(-2px);
+}
