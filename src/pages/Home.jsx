@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
+import api from "../api"; 
 import { socket } from "../Socket";
 import { useNavigate } from "react-router-dom";
 import LoginModal from "./Login";
@@ -22,20 +22,18 @@ const Home = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [aiLoading, setAiLoading] = useState(false);
 
-  const fetchFeaturedRestaurants = async () => {
-    try {
-      const res = await axios.get(
-        "http://localhost:5000/api/admin/restaurants"
-      );
+ const fetchFeaturedRestaurants = async () => {
+  try {
+    const res = await api.get("/admin/restaurants");
 
-      const featured = res.data.filter((r) => r.isFeatured);
+    const featured = res.data.filter((r) => r.isFeatured);
 
-      setRestaurants(featured);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to load featured restaurants");
-    }
-  };
+    setRestaurants(featured);
+  } catch (err) {
+    console.error(err);
+    setError("Failed to load featured restaurants");
+  }
+};
 
   useEffect(() => {
     setLoading(true);
@@ -64,30 +62,25 @@ const Home = () => {
   }, []);
 
   // AI RECOMMENDATION API
-  const getRecommendations = async () => {
-    try {
-      if (!budget && !mood) return;
+const getRecommendations = async () => {
+  try {
+    if (!budget && !mood) return;
 
-      setAiLoading(true);
+    setAiLoading(true);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/food/recommend",
-        {
-          budget: budget ? Number(budget) : null,
-          mood,
-        }
-      );
+    const res = await api.post("/recommend", {
+      budget: budget ? Number(budget) : null,
+      mood,
+    });
 
-      setRecommendations(
-        res.data.recommendations || []
-      );
-    } catch (err) {
-      console.error(err);
-      setRecommendations([]);
-    } finally {
-      setAiLoading(false);
-    }
-  };
+    setRecommendations(res.data.recommendations || []);
+  } catch (err) {
+    console.error(err);
+    setRecommendations([]);
+  } finally {
+    setAiLoading(false);
+  }
+};
 
   if (loading)
     return <p>Loading featured restaurants...</p>;
