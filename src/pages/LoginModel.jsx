@@ -21,29 +21,28 @@ const LoginModal = () => {
     }
   }, [user, loading, navigate]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoadingLogin(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoadingLogin(true);
 
-    try {
-      const res = await api.post("/auth/login", {
-  email,
-  password,
-});
+  try {
+    const res = await api.post("/auth/login", {
+      email,
+      password,
+    });
 
-setUserAndStorage(res.data.user, res.data.token);
-    } catch (err) {
-  setError(
-    err.response?.data?.error ||
-    err.response?.data?.message ||
-    "Something went wrong. Please try again."
-  );
-}
-    } finally {
-      setLoadingLogin(false);
-    }
-  };
+    setUserAndStorage(res.data.user, res.data.token);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      "Something went wrong. Please try again."
+    );
+  } finally {
+    setLoadingLogin(false);
+  }
+}; 
 
   if (loading) return <p>Loading...</p>;
 
