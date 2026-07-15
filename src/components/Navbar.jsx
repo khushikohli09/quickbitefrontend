@@ -8,8 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { CartContext } from "../context/CartContext";
 import { UserContext } from "../context/UserContext";
 import Cart from "../pages/Cart";
-import { io } from "socket.io-client";
-import api from "../api/api";
+import { socket } from "../Socket";
 import "../styles/Navbar.css";
 
 const Navbar = () => {
@@ -17,7 +16,6 @@ const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfilePanel, setShowProfilePanel] = useState(false);
-  const [socket, setSocket] = useState(null);  // ← Socket state
 
   const [profileData, setProfileData] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
@@ -27,9 +25,6 @@ const Navbar = () => {
     useContext(UserContext);
 
   const navigate = useNavigate();
-
-  // API URL from environment variable
-  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 
   const toggleMobileMenu = () =>
     setIsMobileMenuOpen(!isMobileMenuOpen);
@@ -45,7 +40,7 @@ const Navbar = () => {
   const isUser = role === "USER";
   const isVendor = role === "VENDOR";
 
-  // ---------------- PROFILE (Using api.js) ----------------
+  // ---------------- PROFILE ----------------
   useEffect(() => {
     const fetchProfile = async () => {
       const token = getToken();
@@ -53,15 +48,29 @@ const Navbar = () => {
       if (!token || !user?.id || isVendor) return;
 
       try {
-        const profileRes = await api.get("/users/me", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setProfileData(profileRes.data);
+        const profileRes = await fetch(
+          "http://localhost:5000/api/users/me",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
-        const orderRes = await api.get("/users/me/orders", {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        setOrderHistory(orderRes.data || []);
+        const profile = await profileRes.json();
+        setProfileData(profile);
+
+        const orderRes = await fetch(
+          "http://localhost:5000/api/users/me/orders",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const orders = await orderRes.json();
+        setOrderHistory(orders || []);
       } catch (err) {
         console.log("Profile fetch error:", err);
       }
@@ -70,7 +79,7 @@ const Navbar = () => {
     fetchProfile();
   }, [user, isVendor]);
 
-  // ---------------- SOCKET ORDER HANDLER ----------------
+  // ---------------- SOCKET ----------------
   const handleOrderReceived = useCallback(
     (order) => {
       setNotifications((prev) => [
@@ -91,73 +100,33 @@ const Navbar = () => {
     [setNotifications]
   );
 
-  // ---------------- SOCKET CONNECTION FUNCTIONS (Merged) ----------------
-  const connectSocket = useCallback((userId, userRole) => {
-    const SOCKET_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-    
-    const newSocket = io(SOCKET_URL, {
-      transports: ["websocket", "polling"],
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-      autoConnect: true,
-    });
-
-    // Socket event listeners
-    newSocket.on("connect", () => {
-      console.log("✅ WebSocket connected:", newSocket.id);
-      newSocket.emit("register", { userId: userId, role: userRole });
-    });
-
-    newSocket.on("disconnect", (reason) => {
-      console.log("❌ WebSocket disconnected:", reason);
-    });
-
-    newSocket.on("connect_error", (error) => {
-      console.log("⚠️ WebSocket connection error:", error.message);
-    });
-
-    return newSocket;
-  }, []);
-
-  const disconnectSocket = useCallback((socketInstance) => {
-    if (socketInstance && socketInstance.connected) {
-      socketInstance.disconnect();
-      console.log("🔌 Socket manually disconnected");
-    }
-  }, []);
-
-  // ---------------- SOCKET SETUP ----------------
   useEffect(() => {
     if (!user?.id) return;
 
-    // Create and connect socket
-    const newSocket = connectSocket(user.id, role);
-    setSocket(newSocket);
+    if (!socket.connected) socket.connect();
+
+    socket.emit("register", {
+      userId: user.id,
+      role,
+    });
 
     if (isVendor) {
-      newSocket.on("order-received", handleOrderReceived);
+      socket.on("order-received", handleOrderReceived);
     }
 
-    // Cleanup on unmount
     return () => {
-      if (isVendor) {
-        newSocket.off("order-received", handleOrderReceived);
-      }
-      disconnectSocket(newSocket);
+      socket.off("order-received", handleOrderReceived);
     };
-  }, [user?.id, role, isVendor, handleOrderReceived, connectSocket, disconnectSocket]);
+  }, [user, role, isVendor, handleOrderReceived]);
 
   // ---------------- ACTIONS ----------------
   const confirmOrder = (order) => {
-    if (socket && socket.connected) {
-      socket.emit("update-order-status", {
-        orderId: order.id || order.orderId,
-        userId: order.userId,
-        status: "Confirmed",
-        total: order.total,
-      });
-    }
+    socket.emit("update-order-status", {
+      orderId: order.id || order.orderId,
+      userId: order.userId,
+      status: "Confirmed",
+      total: order.total,
+    });
 
     setNotifications((prev) =>
       prev.map((n) =>
@@ -169,14 +138,12 @@ const Navbar = () => {
   };
 
   const readyToDeliver = (order) => {
-    if (socket && socket.connected) {
-      socket.emit("update-order-status", {
-        orderId: order.id || order.orderId,
-        userId: order.userId,
-        status: "Ready to Deliver",
-        total: order.total,
-      });
-    }
+    socket.emit("update-order-status", {
+      orderId: order.id || order.orderId,
+      userId: order.userId,
+      status: "Ready to Deliver",
+      total: order.total,
+    });
 
     setNotifications((prev) =>
       prev.filter(
@@ -345,6 +312,9 @@ const Navbar = () => {
                 ))}
 
                 <p>💰 Total: ₹{o.total}</p>
+
+                
+               
               </div>
             ))}
           </div>
