@@ -6,8 +6,6 @@ import React, {
   useContext,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
-
 import { UserContext } from "../context/UserContext";
 
 import AddRestaurantForm from "../components/AddRestaurantForm";
@@ -25,7 +23,6 @@ const VendorDashboard = () => {
 
   const [restaurant, setRestaurant] =
     useState(null);
-  const navigate = useNavigate();
 
   const [fetching, setFetching] =
     useState(true);
@@ -379,14 +376,6 @@ const VendorDashboard = () => {
             <p className="category">
               {restaurant.category}
             </p>
-            <button
-  className="analytics-btn"
-  onClick={() =>
-    navigate("/vendor-analytics")
-  }
->
-  See Analytics
-</button>
 
             <div className="checkout-time">
               ⏱ Checkout Time :
