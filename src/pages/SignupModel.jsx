@@ -12,29 +12,30 @@ const SignupModal = () => {
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setSuccess("");
 
-    try {
-    const res = await api.post("/auth/signup", {
-  name,
-  email,
-  password,
-  role,
-});
+  try {
+    await api.post("/auth/signup", {
+      name,
+      email,
+      password,
+      role,
+    });
 
-setSuccess("Signup successful! Redirecting to login...");
+    setSuccess("Signup successful! Redirecting to login...");
 
-setTimeout(() => navigate("/login"), 1500);
-    }  catch (err) {
-  setError(
-    err.response?.data?.error ||
-    err.response?.data?.message ||
-    "Something went wrong. Please try again."
-  );
-}
+    setTimeout(() => navigate("/login"), 1500);
+  } catch (err) {
+    setError(
+      err.response?.data?.error ||
+      err.response?.data?.message ||
+      "Something went wrong. Please try again."
+    );
+  }
+};
   return (
     <div className="auth-page">
 
