@@ -2,6 +2,7 @@ import React, { useState, useContext, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { UserContext } from "../context/UserContext";
 import "../styles/Auth.css";
+import api from "../api/api";
 
 const LoginModal = () => {
   const [email, setEmail] = useState("");
@@ -26,21 +27,19 @@ const LoginModal = () => {
     setLoadingLogin(true);
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      const res = await api.post("/auth/login", {
+  email,
+  password,
+});
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setUserAndStorage(data.user, data.token);
-      } else {
-        setError(data.error || "Invalid credentials");
-      }
+setUserAndStorage(res.data.user, res.data.token);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+  setError(
+    err.response?.data?.error ||
+    err.response?.data?.message ||
+    "Something went wrong. Please try again."
+  );
+}
     } finally {
       setLoadingLogin(false);
     }
