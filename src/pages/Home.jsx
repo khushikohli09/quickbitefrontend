@@ -18,7 +18,9 @@ const Home = () => {
 
   const fetchFeaturedRestaurants = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/restaurants");
+      const res = await axios.get(
+  `${process.env.REACT_APP_BACKEND_URL}/api/admin/restaurants`
+);
       const featured = res.data.filter((r) => r.isFeatured);
       setRestaurants(featured);
     } catch (err) {
