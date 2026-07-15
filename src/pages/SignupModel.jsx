@@ -9,21 +9,15 @@ const SignupModal = () => {
   const [role, setRole] = useState("USER");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  // 🔥 API URL from environment variable
-  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    setLoading(true);
 
     try {
-      // ✅ Fixed: Use environment variable
-      const res = await fetch(`${API_URL}/api/auth/signup`, {
+      const res = await fetch("http://localhost:5000/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password, role }),
@@ -35,20 +29,17 @@ const SignupModal = () => {
         setSuccess("Signup successful! Redirecting to login...");
         setTimeout(() => navigate("/login"), 1500);
       } else {
-        setError(data.error || "Signup failed. Please try again.");
+        setError(data.error);
       }
     } catch (err) {
-      console.error("Signup error:", err);
       setError("Something went wrong. Please try again.");
-    } finally {
-      setLoading(false);
     }
   };
 
   return (
     <div className="auth-page">
 
-      {/* FULL BACKGROUND FLOATERS */}
+      {/* ✅ FULL BACKGROUND FLOATERS */}
       <div className="floating-icons">
         <span>🍔</span>
         <span>🍕</span>
@@ -75,7 +66,6 @@ const SignupModal = () => {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            disabled={loading}
           />
 
           <input
@@ -84,7 +74,6 @@ const SignupModal = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            disabled={loading}
           />
 
           <input
@@ -93,22 +82,20 @@ const SignupModal = () => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            disabled={loading}
           />
 
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
             required
-            disabled={loading}
           >
             <option value="USER">User</option>
             <option value="VENDOR">Vendor</option>
             <option value="ADMIN">Admin</option>
           </select>
 
-          <button type="submit" className="auth-btn" disabled={loading}>
-            {loading ? "Creating Account..." : "Sign Up"}
+          <button type="submit" className="auth-btn">
+            Sign Up
           </button>
         </form>
 
