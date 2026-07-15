@@ -10,6 +10,7 @@ import { UserContext } from "../context/UserContext";
 import Cart from "../pages/Cart";
 import { socket } from "../Socket";
 import "../styles/Navbar.css";
+const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -49,7 +50,7 @@ const Navbar = () => {
 
       try {
         const profileRes = await fetch(
-          "http://localhost:5000/api/users/me",
+          `${API_URL}/api/users/me`
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -61,7 +62,7 @@ const Navbar = () => {
         setProfileData(profile);
 
         const orderRes = await fetch(
-          "http://localhost:5000/api/users/me/orders",
+         `${API_URL}/api/users/me/orders`
           {
             headers: {
               Authorization: `Bearer ${token}`,
