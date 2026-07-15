@@ -12,9 +12,6 @@ const LoginModal = () => {
   const navigate = useNavigate();
   const { user, setUserAndStorage, loading } = useContext(UserContext);
 
-  // 🔥 API URL from environment variable
-  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-
   useEffect(() => {
     if (!loading && user) {
       if (user.role === "admin") navigate("/admin/dashboard");
@@ -29,8 +26,7 @@ const LoginModal = () => {
     setLoadingLogin(true);
 
     try {
-      // ✅ Fixed: Use environment variable
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch("http://localhost:5000/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -55,7 +51,7 @@ const LoginModal = () => {
   return (
     <div className="auth-page">
 
-      {/* FLOATING BACKGROUND */}
+      {/* ✅ SAME FLOATING BACKGROUND */}
       <div className="floating-icons">
         <span>🍔</span>
         <span>🍕</span>
