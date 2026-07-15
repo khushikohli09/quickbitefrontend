@@ -6,6 +6,7 @@ import React, {
   useContext,
 } from "react";
 
+
 import { UserContext } from "../context/UserContext";
 
 import AddRestaurantForm from "../components/AddRestaurantForm";
@@ -43,7 +44,8 @@ const VendorDashboard = () => {
     const fetchRestaurant = async () => {
       try {
         const token =
-          localStorage.getItem("token");
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token");
 
         const vendorId =
           user.id || user._id;
@@ -95,7 +97,8 @@ const VendorDashboard = () => {
   ) => {
     try {
       const token =
-        localStorage.getItem("token");
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token");
 
       const vendorId =
         user.id || user._id;
@@ -137,8 +140,9 @@ const VendorDashboard = () => {
   const handleMenuItemSubmit =
     async (itemData) => {
       try {
-        const token =
-          localStorage.getItem("token");
+       const token =
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token");
 
         const isEditing =
           !!editingMenuItem;
@@ -260,8 +264,8 @@ const VendorDashboard = () => {
 
     try {
       const token =
-        localStorage.getItem("token");
-
+  localStorage.getItem("token") ||
+  sessionStorage.getItem("token");
       await api.delete(
         `/vendor/menu/${menuItemId}`,
         {
