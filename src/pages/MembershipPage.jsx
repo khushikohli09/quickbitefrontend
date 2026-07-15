@@ -18,9 +18,6 @@ const MembershipPage = () => {
     sessionStorage.getItem("token") ||
     localStorage.getItem("token");
 
-  // 🔥 API URL from environment variable
-  const API_URL = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-
   useEffect(() => {
     fetchMembershipPlans();
   }, []);
@@ -32,9 +29,8 @@ const MembershipPage = () => {
     try {
       setLoading(true);
 
-      // ✅ Fixed: Use environment variable
       const res = await axios.get(
-        `${API_URL}/api/membership/plans`
+        "http://localhost:5000/api/membership/plans"
       );
 
       setPlans(res.data.plans || []);
@@ -67,9 +63,8 @@ const MembershipPage = () => {
     try {
       setLoading(true);
 
-      // ✅ Fixed: Use environment variable
       const res = await axios.post(
-        `${API_URL}/api/coupons/apply`,
+        "http://localhost:5000/api/coupons/apply",
         {
           code,
           price: selectedPlan.price,
@@ -122,9 +117,8 @@ const MembershipPage = () => {
 
       setLoading(true);
 
-      // ✅ Fixed: Use environment variable
       await axios.post(
-        `${API_URL}/api/membership/buy`,
+        "http://localhost:5000/api/membership/buy",
         {
           planId: selectedPlan.id,
           finalPrice,
