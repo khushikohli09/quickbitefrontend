@@ -50,7 +50,7 @@ const Navbar = () => {
 
       try {
         const profileRes = await fetch(
-          `${API_URL}/api/users/me`
+          `${API_URL}/api/users/me`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -62,7 +62,7 @@ const Navbar = () => {
         setProfileData(profile);
 
         const orderRes = await fetch(
-         `${API_URL}/api/users/me/orders`
+         `${API_URL}/api/users/me/orders`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
