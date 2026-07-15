@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/Auth.css";
+import api from "../api/api";
 
 const SignupModal = () => {
   const [name, setName] = useState("");
@@ -17,20 +18,16 @@ const SignupModal = () => {
     setSuccess("");
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password, role }),
-      });
+    const res = await api.post("/auth/signup", {
+  name,
+  email,
+  password,
+  role,
+});
 
-      const data = await res.json();
+setSuccess("Signup successful! Redirecting to login...");
 
-      if (res.ok) {
-        setSuccess("Signup successful! Redirecting to login...");
-        setTimeout(() => navigate("/login"), 1500);
-      } else {
-        setError(data.error);
-      }
+setTimeout(() => navigate("/login"), 1500);
     } catch (err) {
       setError("Something went wrong. Please try again.");
     }
