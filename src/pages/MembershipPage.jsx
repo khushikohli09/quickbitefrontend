@@ -1,11 +1,11 @@
 // src/pages/MembershipPage.jsx
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+
 import MembershipCard from "../components/MembershipCard";
 import CouponBox from "../components/CouponBox";
 import "../styles/MembershipPage.css";
-
+import api from "../api/api";
 const MembershipPage = () => {
   const [plans, setPlans] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(null);
@@ -29,9 +29,7 @@ const MembershipPage = () => {
     try {
       setLoading(true);
 
-      const res = await axios.get(
-        "http://localhost:5000/api/membership/plans"
-      );
+     const res = await api.get("/membership/plans");
 
       setPlans(res.data.plans || []);
     } catch (error) {
@@ -63,18 +61,18 @@ const MembershipPage = () => {
     try {
       setLoading(true);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/coupons/apply",
-        {
-          code,
-          price: selectedPlan.price,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+   const res = await api.post(
+  "/coupons/apply",
+  {
+    code,
+    price: selectedPlan.price,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
 
       setCouponCode(code);
       setFinalPrice(res.data.finalPrice);
@@ -117,19 +115,19 @@ const MembershipPage = () => {
 
       setLoading(true);
 
-      await axios.post(
-        "http://localhost:5000/api/membership/buy",
-        {
-          planId: selectedPlan.id,
-          finalPrice,
-          couponCode,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await api.post(
+  "/membership/buy",
+  {
+    planId: selectedPlan.id,
+    finalPrice,
+    couponCode,
+  },
+  {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  }
+);
 
       setStep("success");
     } catch (error) {
