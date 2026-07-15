@@ -28,11 +28,13 @@ const SignupModal = () => {
 setSuccess("Signup successful! Redirecting to login...");
 
 setTimeout(() => navigate("/login"), 1500);
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-    }
-  };
-
+    }  catch (err) {
+  setError(
+    err.response?.data?.error ||
+    err.response?.data?.message ||
+    "Something went wrong. Please try again."
+  );
+}
   return (
     <div className="auth-page">
 
